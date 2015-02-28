@@ -29,6 +29,8 @@ void attack() {
   // ... then interact with the attack target.
   interact( &errCode, G);
 
+  printf( "r = %d\n", errCode );
+
 }
 
 void cleanup( int s ){
