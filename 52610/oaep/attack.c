@@ -13,28 +13,22 @@ FILE* target_in  = NULL; // buffered attack target output stream
 void interact(        int* errCode,
                const char* ciphertext ) {
 
-  // Send      G      to   attack target.
-  fprintf( target_in, "%s\n", G );  fflush( target_in );
+  // Send ciphertext to attack target.
+  fprintf( target_in, "%s\n", ciphertext );  fflush( target_in );
 
-  // Receive ( t, r ) from attack target.
-  fscanf( target_out, "%d", t );
-  fscanf( target_out, "%d", r );
+  // Receive errCode from attack target.
+  fscanf( target_out, "%d", errCode );
 }
 
 void attack() {
   // Select a hard-coded guess ...
   char* G = "guess";
 
-  int   t;
-  int   r;
+  int   errCode;
 
   // ... then interact with the attack target.
-  interact( &t, &r, G );
+  interact( &errCode, G);
 
-  // Print all of the inputs and outputs.
-  printf( "G = %s\n", G );
-  printf( "t = %d\n", t );
-  printf( "r = %d\n", r );
 }
 
 void cleanup( int s ){
