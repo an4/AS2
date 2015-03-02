@@ -1,6 +1,23 @@
 #include "attack.h"
+#include "string.h"
 
-#define BUFFER_SIZE ( 80 )
+#define BUFFER_SIZE ( 256 )
+
+/** Error codes */
+#define SUCCESS 0
+#define ERROR1 1
+#define ERROR2 2
+// Message out of range
+#define M_RANGE 3
+// Ciphertext out of range
+#define C_RANGE 4
+// Message too long mLen > k - 2hLen - 2
+#define M_LENGHT 5
+// Ciphertext does not match length of N
+#define C_LENGHT 6
+// Ciphertext does not match the length of the hash function output
+#define CH_LENGHT 7
+/** */
 
 pid_t pid        = 0;    // process ID (of either parent or child) from fork
 
@@ -20,16 +37,26 @@ void interact(        int* errCode,
   fscanf( target_out, "%d", errCode );
 }
 
+char* pad_ciphertext(const char* cipher) {
+    char output[BUFFER_SIZE];
+    int length = BUFFER_SIZE - strlen(cipher);
+    sprintf(output,"%s%*.*s", cipher, length, length, "0");
+    return output;
+}
+
 void attack() {
   // Select a hard-coded guess ...
-  char* G = "guess";
+  char * G = "26";
+
+  // Ciphertext needs to match modulus length
+  G = pad_ciphertext(G);
 
   int   errCode;
 
   // ... then interact with the attack target.
   interact( &errCode, G);
 
-  printf( "r = %d\n", errCode );
+  printf( "errCode = %d\n", errCode );
 
 }
 
