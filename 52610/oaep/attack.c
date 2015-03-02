@@ -27,29 +27,27 @@ int   attack_raw[ 2 ];   // unbuffered communication: attack target -> attacker
 FILE* target_out = NULL; // buffered attack target input  stream
 FILE* target_in  = NULL; // buffered attack target output stream
 
-void interact(        int* errCode,
-               const char* ciphertext ) {
-
-  // Send ciphertext to attack target.
-  fprintf( target_in, "%s\n", ciphertext );  fflush( target_in );
-
-  // Receive errCode from attack target.
-  fscanf( target_out, "%d", errCode );
+void pad_ciphertext(const char* cipher, char* output) {
+    int length = BUFFER_SIZE - strlen(cipher);
+    sprintf(output,"%s%0*d", cipher, length, 0);
 }
 
-char* pad_ciphertext(const char* cipher) {
-    char output[BUFFER_SIZE];
-    int length = BUFFER_SIZE - strlen(cipher);
-    sprintf(output,"%s%*.*s", cipher, length, length, "0");
-    return output;
+void interact(        int* errCode,
+               const char* ciphertext ) {
+    // Ciphertext needs to match modulus length
+    char padded_ciphertext[256];
+    pad_ciphertext(ciphertext, padded_ciphertext);
+
+    // Send ciphertext to attack target.
+    fprintf( target_in, "%s\n", padded_ciphertext );  fflush( target_in );
+
+    // Receive errCode from attack target.
+    fscanf( target_out, "%d", errCode );
 }
 
 void attack() {
   // Select a hard-coded guess ...
-  char * G = "26";
-
-  // Ciphertext needs to match modulus length
-  G = pad_ciphertext(G);
+  char* G = "00";
 
   int   errCode;
 
