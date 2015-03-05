@@ -2,30 +2,25 @@ import sys, subprocess
 
 def interact( G ) :
   # Send      G      to   attack target.
-  target_in.write( "%s\n" % ( G ) ) ; target_in.flush()
+  target_in.write( "%s\n" % ( G ).zfill(256) ) ; target_in.flush()
 
   # Receive ( t, r ) from attack target.
-  t = int( target_out.readline().strip() )
-  r = int( target_out.readline().strip() )
-
-  return ( t, r )
+  return int( target_out.readline().strip() )
 
 def attack() :
   # Select a hard-coded guess ...
-  G = "guess"
+  G = "0"
 
   # ... then interact with the attack target.
-  ( t, r ) = interact( G )
+  errCode = interact( G )
 
   # Print all of the inputs and outputs.
-  print "G = %s" % ( G )
-  print "t = %d" % ( t )
-  print "r = %d" % ( r )
+  print "errorCode = %d" % ( errCode )
 
 if ( __name__ == "__main__" ) :
   # Produce a sub-process representing the attack target.
   target = subprocess.Popen( args   = sys.argv[ 1 ],
-                             stdout = subprocess.PIPE, 
+                             stdout = subprocess.PIPE,
                              stdin  = subprocess.PIPE )
 
   # Construct handles to attack target standard input and output.
