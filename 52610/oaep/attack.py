@@ -5,16 +5,6 @@ from hashlib import sha1
 SUCCESS = 0
 ERROR1  = 1
 ERROR2  = 2
-# Message out of range
-M_RANGE = 3
-# Ciphertext out of range
-C_RANGE = 4
-# Message too long mLen > k - 2hLen - 2
-M_LEN   = 5
-# Ciphertext does not match the length of N
-C_LEN   = 6
-# CIphertext does not match the length of the hash function output
-CH_LEN  = 7
 
 # Read Public Key and Ciphertext from User.param and calculate k and B
 def readParams( file ) :
