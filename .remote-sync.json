@@ -1,0 +1,14 @@
+{
+  "transport": "scp",
+  "hostname": "snowy.cs.bris.ac.uk",
+  "port": 22,
+  "username": "ad12461",
+  "password": "f3nd3r@10twO",
+  "keyfile": "",
+  "passphrase": "",
+  "target": "/home/ugrads/coms2012/ad12461/linux/Private/AS/Att/",
+  "ignore": [
+    ".git/**"
+  ],
+  "uploadOnSave" : "true"
+}
