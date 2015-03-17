@@ -12,9 +12,6 @@ def readParams( file ) :
 
     # Read modulus N
     temp = file.readline()
-    # Remove new line character
-    temp = temp[:-1]
-    # Convert to decimal
     N = int(temp, 16)
 
     # Calculate k, the byte length of N
@@ -26,18 +23,10 @@ def readParams( file ) :
     B =  pow(2, 8*(k-1))
 
     # Read public exponent e
-    temp = file.readline()
-    # Remove new line character
-    temp = temp[:-1]
-    # Convert to decimal
-    e = int(temp, 16)
+    e = int(file.readline(), 16)
 
     # Read ciphertext c
-    temp = file.readline()
-    # Remove new line character
-    temp = temp[:-1]
-    # Convert to decimal
-    c = int(temp, 16)
+    c = int(file.readline(), 16)
 
     count_interactions = 0
 
