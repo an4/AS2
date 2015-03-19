@@ -23,7 +23,7 @@ omega = 0
 rho_sq = 0
 
 # Ciphertext to be generated
-size = 5000
+size = 6000
 
 # Confidence level, when is the bit accepted?
 level = 2.0
@@ -97,9 +97,13 @@ def MonPro(a, b) :
 
 def generate(x) :
     global cipher
+    cipher_append = cipher.append
     for i in range(x) :
         # ciphertext in [0,N)
-        cipher.append(random.randint(0, N-1))
+        abc = random.getrandbits(1024)
+        while abc >= N :
+            abc = random.getrandbits(1024)
+        cipher_append(abc)
 
 # Square and multiply
 # Square and multiplly for the first bit takes 1.5 steps (square, multiply, square)
@@ -137,83 +141,134 @@ def initialize() :
     print "Generate ciphertexts."
     generate(size)
 
+    cipher_time_append = cipher_time.append
+    cipher_temp_append = cipher_temp.append
+    cipher_mform_append = cipher_mform.append
+
     print "Working ..."
     for i in range(size) :
         time = interact(cipher[i])
-        cipher_time.append(time)
+        cipher_time_append(time)
 
         temp, mform = SAM_init(cipher[i])
-        cipher_temp.append(temp)
-        cipher_mform.append(mform)
+        cipher_temp_append(temp)
+        cipher_mform_append(mform)
+
+def reinitialize() :
+    global cipher, cipher_temp, cipher_mform, cipher_time, d
+    # Ciphertexts
+    cipher = []
+    # Ciphertexts in Montgomery form
+    cipher_mform = []
+    # Temporary value between ciphertext and plaintext
+    cipher_temp = []
+    # Time for each ciphertext
+    cipher_time = []
+
+    print "Generate ciphertexts."
+    generate(size)
+
+    cipher_time_append = cipher_time.append
+    cipher_temp_append = cipher_temp.append
+    cipher_mform_append = cipher_mform.append
+
+    # Remove last bit
+    if d != 1 :
+        d = d >> 1
+
+    length = len(bin(d)) - 2
+
+    print "Working ..."
+    for i in range(size) :
+        time = interact(cipher[i])
+        cipher_time_append(time)
+        temp, mform = SAM_init(cipher[i])
+        cipher_mform_append(mform)
+        for j in range(length-2, -1, -1) :
+            temp, _ = SAM_bit(mform, temp, (d>>j)&1 )
+        cipher_temp_append(temp)
+
 
 # Square and multiply for all bits except the first (always 1) and last one.
 # The function performs the multiply step for the current bit, and the squaring
 # for the next bit to determine if there was a reduction.
-def SAM(mform, temp, bit) :
+def SAM_bit(mform, temp, bit) :
     if bit == 1 :
         temp, _ = MonPro(temp, mform)
     temp, Red = MonPro(temp, temp)
     return (temp, Red)
+
+# Square and multiply improved
+# At each step we need to compute square and multiply for both one and zero, we
+# can remove the if statement
+def SAM(mform, temp) :
+    # When the bit is zero
+    tempNotSet, redNotSet = MonPro(temp, temp)
+    # When the bit is one
+    tempSet, redSet = MonPro(temp, mform)
+    tempSet, redSet = MonPro(tempSet, tempSet)
+
+    return (tempNotSet, redNotSet, tempSet, redSet)
 
 def getNext() :
     global cipher_temp, size, d, cipher_mform
 
     while True :
         # The bit is one, reduction
-        BSetRed = []
+        BSetRed = [0, 0]
         # The bit is one, no reduction
-        BSetNoRed = []
+        BSetNoRed = [0, 0]
         # The bit is zero, reduction
-        BNotSetRed = []
+        BNotSetRed = [0, 0]
         # The bit is zero, no reduction
-        BNotSetNoRed = []
+        BNotSetNoRed = [0, 0]
 
-        ciphertext_T_t = {}
-        ciphertext_T_t[0] = []
-        ciphertext_T_t[1] = []
+        ciphertext_temp = {}
+        ciphertext_temp[0] = []
+        ciphertext_temp[1] = []
+
+        cipher_temp_notSet = ciphertext_temp[0].append
+        cipher_temp_Set = ciphertext_temp[1].append
 
         for i in range(size) :
-            # Check when bit is set
-            temp, Red = SAM(cipher_mform[i], cipher_temp[i], 1)
-            ciphertext_T_t[1].append(temp)
-            if Red :
-                BSetRed.append(cipher_time[i])
-            else :
-                BSetNoRed.append(cipher_time[i])
-            # Check when bit is not set
-            temp, Red = SAM(cipher_mform[i], cipher_temp[i], 0)
-            ciphertext_T_t[0].append(temp)
-            if Red :
-                BNotSetRed.append(cipher_time[i])
-            else :
-                BNotSetNoRed.append(cipher_time[i])
+            tempNotSet, redNotSet, tempSet, redSet = SAM(cipher_mform[i], cipher_temp[i])
 
-        M1 = np.mean(BSetRed)
-        M2 = np.mean(BSetNoRed)
-        M3 = np.mean(BNotSetRed)
-        M4 = np.mean(BNotSetNoRed)
+            cipher_temp_Set(tempSet)
+            if redSet :
+                BSetRed[0] += cipher_time[i]
+                BSetRed[1] += 1
+            else :
+                BSetNoRed[0] += cipher_time[i]
+                BSetNoRed[1] += 1
+
+            cipher_temp_notSet(tempNotSet)
+            if redNotSet :
+                BNotSetRed[0] += cipher_time[i]
+                BNotSetRed[1] += 1
+            else :
+                BNotSetNoRed[0] += cipher_time[i]
+                BNotSetNoRed[1] += 1
+
+        M1 = BSetRed[0]/float(BSetRed[1])
+        M2 = BSetNoRed[0]/float(BSetNoRed[1])
+        M3 = BNotSetRed[0]/float(BNotSetRed[1])
+        M4 = BNotSetNoRed[0]/float(BNotSetNoRed[1])
 
         diff_0 = abs(M3-M4)
         diff_1 = abs(M1-M2)
         diff = abs(diff_0 - diff_1)
 
         if ( diff_1 > diff_0) and diff > level :
-            cipher_temp = ciphertext_T_t[1]
-            sys.stdout.write('1'); sys.stdout.flush();
-            return 1
+            cipher_temp = ciphertext_temp[1]
+            return 1, diff
         elif ( diff_1 < diff_0) and diff > level :
-            cipher_temp = ciphertext_T_t[0]
-            sys.stdout.write('0'); sys.stdout.flush();
-            return 0
+            cipher_temp = ciphertext_temp[0]
+            return 0, diff
         else :
-            print "\nCan't tell. Restart."
-            # Increase sample size
-            size += 1000
+            print "Confidence level: " + str(diff)
+            print "Can't tell."
             # Generate ciphertexts
-            initialize()
-            # Reset private key
-            d = 1
-            sys.stdout.write('1'); sys.stdout.flush();
+            reinitialize()
 
 def attack() :
     global cipher, cipher_mform, cipher_temp, cipher_time, d
@@ -223,12 +278,15 @@ def attack() :
         return
 
     # Last bit can't be guessed, try the two possible values
-    d0 = (d << 1)
+    # d0 = (d << 1)
+    # In Python it is faster to add than to shift or multiply
+    d0 = d + d
     if test(d0) :
         print "Found key: " + str(bin(d0))
-        d = d2
+        d = d0
         return
-    d1 = (d << 1) | 1
+    # d1 = (d << 1) | 1
+    d1 = d + d + 1
     if test(d1) :
         print "Found key: " + str(bin(d1))
         d = d1
@@ -237,23 +295,29 @@ def attack() :
     initialize()
 
     print "Start guessing ..."
-    sys.stdout.write('1'); sys.stdout.flush();
+    print str(bin(d))[2:]
 
     # Loop until the key is found
     while True :
-        bit = getNext()
-        d = (d << 1) | bit
+        bit, cl = getNext()
+        # d = (d << 1) | bit
+        d = d + d + bit
+
+        print "Confidence level: " + str(cl)
+        print str(bin(d))[2:]
 
         # Last bit can't be guessed, try the two possible values
-        d0 = (d << 1)
+        # d0 = (d << 1)
+        d0 = d + d
         if test(d0) :
-            print '0'
+            print "Last bit guessed: 0"
             print "Found key: " + str(bin(d0))
             d = d0
             break
-        d1 = (d << 1) | 1
+        # d1 = (d << 1) | 1
+        d1 = d + d + 1
         if test(d1) :
-            print '1'
+            print "Last bit guessed: 1"
             print "Found key: " + str(bin(d1))
             d = d1
             break
@@ -280,11 +344,11 @@ if ( __name__ == "__main__" ) :
 
     # Read public parameters
     readPK(sys.argv[2])
-    # Compute Montgomery parameters: rho, omeha and rho squared
+    # Compute Montgomery parameters: rho, omega and rho squared
     montParam()
     #
     attack()
     #
-    print "Key in hex: " +str(hex(d))
+    print "Key in hex: " +str("%X" %d)
     #
     print "Number of interactions with the attack target: " + str(interactions)
