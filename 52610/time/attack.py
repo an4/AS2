@@ -24,6 +24,7 @@ rho_sq = 0
 
 # Ciphertext to be generated
 size = 6000
+# size = 20000
 
 # Confidence level, when is the bit accepted?
 level = 2.0
@@ -32,18 +33,47 @@ interactions = 0
 
 # Test private key
 def test (d) :
-    m = 0x123456
+    m = 0x1234
     c = pow(m, e, N)
     m_r = pow(c, d, N)
     return m == m_r
 
+def interact(ciphertext) :
+    return interactD(ciphertext)
+    # return interactR(ciphertext)
+
 # interact with {user}.D
-def interact( ciphertext ) :
+def interactD( ciphertext ) :
     global interactions
     interactions += 1
 
     # Send ciphertext to attack target.
     target_in.write( "%X\n" % ( ciphertext ) ) ; target_in.flush()
+
+    # Receive ( time, message ) from attack target.
+    # time = an execution time measured in clock cycles
+    # m = plaintext, represented as a hexadecimal integer string
+    time      = int( target_out.readline().strip() )
+    message   = int( target_out.readline().strip(), 16 )
+
+    return time
+
+# interact with {user}.D
+def interactR( ciphertext ) :
+    global interactions
+    interactions += 1
+
+    d_test = 0x00865cf5bb77ebb9eaea94ee863cbc9d24705a12fdc0f2bb64788f0c117b8a4a02f62bd2930a708d3a405a4720b1e3093214b7da70db7285ba8c0dfca5113ee8d2d09c150a7e3c1eea2e48b145c9e6a4a55fd57940ef3eaa6b8031b861a62a18733aaadf5f7f6deb3032051bea7851056e8becbbab54e8cea46a188e05388fde79
+    pk = 0xD8F45CD47C0CDDE7
+    # Hamming weight
+    hw = 36
+    # time when sending 0
+    t = 51712
+
+    # Send ciphertext to attack target.
+    target_in.write( "%X\n" % ( ciphertext ) ) ; target_in.flush()
+    target_in.write( "%X\n" % ( N ) ) ; target_in.flush()
+    target_in.write( "%X\n" % ( pk ) ) ; target_in.flush()
 
     # Receive ( time, message ) from attack target.
     # time = an execution time measured in clock cycles
@@ -303,7 +333,7 @@ def attack() :
         # d = (d << 1) | bit
         d = d + d + bit
 
-        print "Confidence level: " + str(cl)
+        # print "Confidence level: " + str(cl)
         print str(bin(d))[2:]
 
         # Last bit can't be guessed, try the two possible values
@@ -324,8 +354,6 @@ def attack() :
 
         if d >= N :
             print "\nSomething went wrong."
-            # Increase sample size
-            size += 1000
             # Generate ciphertexts
             initialize()
             # Reset private key
