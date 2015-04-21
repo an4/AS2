@@ -2,9 +2,22 @@ import sys, subprocess
 import random
 import multiprocessing
 from Crypto.Cipher import AES
+import numpy
+from pprint import pprint
 
 BLOCK_SIZE = 128
+RANGE = 256
 kcount = 0
+
+# indices for multiplication table
+TWO = 0
+THREE = 1
+NINE = 2
+ELEVEN = 3
+THIRTEEN = 4
+FOURTEEN = 5
+
+mulTab = numpy.zeros((6, RANGE), dtype=int)
 
 # Rijndael S-box
 sbox =  [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
@@ -67,7 +80,6 @@ def SubBytes(x) :
     return sbox[x]
 
 def RSubBytes(x) :
-    x = x%256
     return rsbox[x]
 
 # Addition, Substraction and Multiplication in F8
@@ -81,20 +93,41 @@ def add(a, b) :
 def sub(a, b) :
     return a^b
 
-# Multiplication in F8
-def mulx(a) :
-    if a & 0x80 == 0x80 :
-        return 0x80 ^ (a << 1)
-    else :
-        return (a << 1)
-
 def mul(a, b) :
-    t = 0;
-    for i in range(7, -1, -1) :
-        t = mulx(t)
-        if ((b >> i) & i) :
-            t = t ^ a
-    return t
+    p = 0
+    hiBitSet = 0
+    for i in range(8) :
+        if b & 1 == 1 :
+            p ^= a
+        hiBitSet = a & 0x80
+        a <<= 1
+        if hiBitSet == 0x80 :
+            a ^= 0x1b
+        b >>= 1
+    return p % 256
+
+def getMultiplicationTable() :
+    # *2 | 0
+    for i in xrange(RANGE) :
+        mulTab[TWO][i] = mul(2, i)
+    # *3 | 1
+    for i in xrange(RANGE) :
+        mulTab[THREE][i] = mul(3, i)
+    # *9 | 2
+    for i in xrange(RANGE) :
+        mulTab[NINE][i] = mul(9, i)
+    # *11 | 3
+    for i in xrange(RANGE) :
+        mulTab[ELEVEN][i] = mul(11, i)
+    # *13 | 4
+    for i in xrange(RANGE) :
+        mulTab[THIRTEEN][i] = mul(13, i)
+    # *14 | 5
+    for i in xrange(RANGE) :
+        mulTab[FOURTEEN][i] = mul(14, i)
+
+def getMul(a, b) :
+    return mulTab[a][b]
 
 def interact( fault, message ) :
   # Send fault and message to attack target.
@@ -102,8 +135,7 @@ def interact( fault, message ) :
   target_in.write( "%s\n" % ( message.zfill(32) ) ) ; target_in.flush()
 
   # Receive ciphertext from attack target.
-  ciphertext = target_out.readline().strip()
-  return ciphertext
+  return target_out.readline().strip()
 
 # Return the fault specification as a 5-element tuple
 def getFault() :
@@ -151,8 +183,8 @@ def equation1(x, xp) :
 
         # k1
         for k in range(256) :
-            if mul(2, d1) == eq(x1, xp1, k) :
-                k1 = [k] + k1
+            if getMul(TWO, d1) == eq(x1, xp1, k) :
+                k1.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d1 can be discarded
         if k1 == [] :
@@ -161,7 +193,7 @@ def equation1(x, xp) :
         # k14
         for k in range(256) :
             if d1 == eq(x14, xp14, k) :
-                k14 = [k] + k14
+                k14.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d1 can be discarded
         if k14 == [] :
@@ -170,7 +202,7 @@ def equation1(x, xp) :
         # k11
         for k in range(256) :
             if d1 == eq(x11, xp11, k) :
-                k11 = [k] + k11
+                k11.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d1 can be discarded
         if k11 == [] :
@@ -178,8 +210,8 @@ def equation1(x, xp) :
 
         # k8
         for k in range(256) :
-            if mul(3, d1) == eq(x8, xp8, k) :
-                k8 = [k] + k8
+            if getMul(THREE, d1) == eq(x8, xp8, k) :
+                k8.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d1 can be discarded
         if k8 == [] :
@@ -189,7 +221,7 @@ def equation1(x, xp) :
             for a8 in k8 :
                 for a11 in k11 :
                     for a14 in k14 :
-                        keyBytes = [(a1, a8, a11, a14)] + keyBytes
+                        keyBytes.append((a1, a8, a11, a14))
 
     return keyBytes
 
@@ -218,7 +250,7 @@ def equation2(x, xp) :
         # k5
         for k in range(256) :
             if d2 == eq(x5, xp5, k) :
-                k5 = [k] + k5
+                k5.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d2 can be discarded
         if k5 == [] :
@@ -227,7 +259,7 @@ def equation2(x, xp) :
         # k2
         for k in range(256) :
             if d2 == eq(x2, xp2, k) :
-                k2 = [k] + k2
+                k2.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d2 can be discarded
         if k2 == [] :
@@ -235,8 +267,8 @@ def equation2(x, xp) :
 
         # k15
         for k in range(256) :
-            if mul(3, d2) == eq(x15, xp15, k) :
-                k15 = [k] + k15
+            if getMul(THREE, d2) == eq(x15, xp15, k) :
+                k15.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d2 can be discarded
         if k15 == [] :
@@ -244,8 +276,8 @@ def equation2(x, xp) :
 
         # k12
         for k in range(256) :
-            if mul(2, d2) == eq(x12, xp12, k) :
-                k12 = [k] + k12
+            if getMul(TWO, d2) == eq(x12, xp12, k) :
+                k12.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d2 can be discarded
         if k12 == [] :
@@ -255,7 +287,7 @@ def equation2(x, xp) :
             for a5 in k5 :
                 for a12 in k12 :
                     for a15 in k15 :
-                        keyBytes = [(a2, a5, a12, a15)] + keyBytes
+                        keyBytes.append((a2, a5, a12, a15))
 
     return keyBytes
 
@@ -284,7 +316,7 @@ def equation3(x, xp) :
         # k9
         for k in range(256) :
             if d3 == eq(x9, xp9, k) :
-                k9 = [k] + k9
+                k9.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d3 can be discarded
         if k9 == [] :
@@ -292,8 +324,8 @@ def equation3(x, xp) :
 
         # k6
         for k in range(256) :
-            if mul(3, d3) == eq(x6, xp6, k) :
-                k6 = [k] + k6
+            if getMul(THREE, d3) == eq(x6, xp6, k) :
+                k6.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d3 can be discarded
         if k6 == [] :
@@ -301,8 +333,8 @@ def equation3(x, xp) :
 
         # k3
         for k in range(256) :
-            if mul(2, d3) == eq(x3, xp3, k) :
-                k3 = [k] + k3
+            if getMul(TWO, d3) == eq(x3, xp3, k) :
+                k3.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d3 can be discarded
         if k3 == [] :
@@ -311,7 +343,7 @@ def equation3(x, xp) :
         # k16
         for k in range(256) :
             if d3 == eq(x16, xp16, k) :
-                k16 = [k] + k16
+                k16.append(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d3 can be discarded
         if k16 == [] :
@@ -321,7 +353,7 @@ def equation3(x, xp) :
             for a6 in k6 :
                 for a9 in k9 :
                     for a16 in k16 :
-                        keyBytes = [(a3, a6, a9, a16)] + keyBytes
+                        keyBytes.append((a3, a6, a9, a16))
 
     return keyBytes
 
@@ -355,7 +387,7 @@ def equation4(x, xp) :
 
         # k13
         for k in xrange(256) :
-            if mul(3, d4) == eq(x13, xp13, k) :
+            if getMul(THREE, d4) == eq(x13, xp13, k) :
                 add13(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d4 can be discarded
@@ -364,7 +396,7 @@ def equation4(x, xp) :
 
         # k10
         for k in xrange(256) :
-            if mul(2, d4) == eq(x10, xp10, k) :
+            if getMul(TWO, d4) == eq(x10, xp10, k) :
                 add10(k)
         # If the equation cannot be satisfied there is an impossible differential
         # the value of d4 can be discarded
@@ -422,7 +454,7 @@ def getByteList(x) :
     x16  = getByte(x,  16)
 
     # starts from 1
-    return [0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16]
+    return (0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16)
 
 # RSubBytes(add(a, b))
 def rsbxk(a, b) :
@@ -439,53 +471,53 @@ def addrsb(a, b, c) :
     return add(a, rsbxk(b, c))
 
 def muladd(a, b, c) :
-    return mul(a, add(b, c))
+    return mulTab[a, add(b, c)]
 
 def addadd(a, b, c, d) :
     return add(add(a, b), add(c, d))
 
 def equ1(x, xp, k, h10) :
-    l1 = muladd(14, rsbxk(x[1],   k[1]),  add( addsb(k[1], k[14], k[10]), h10))
-    l2 = muladd(11, rsbxk(x[14],  k[14]), addsb(k[2], k[15], k[11]))
-    l3 = muladd(13, rsbxk(x[11],  k[11]), addsb(k[3], k[16], k[12]))
-    l4 = muladd( 9, rsbxk(x[8],   k[8]),  addsb(k[4], k[13], k[9]))
-    l5 = muladd(14, rsbxk(xp[1],  k[1]),  add( addsb(k[1], k[14], k[10]), h10))
-    l6 = muladd(11, rsbxk(xp[14], k[14]), addsb(k[2], k[15], k[11]))
-    l7 = muladd(13, rsbxk(xp[11], k[11]), addsb(k[3], k[16], k[12]))
-    l8 = muladd( 9, rsbxk(xp[8],  k[8]),  addsb(k[4], k[13], k[9]))
+    l1 = muladd(FOURTEEN, rsbxk(x[1],   k[1]),  add( addsb(k[1], k[14], k[10]), h10))
+    l2 = muladd(ELEVEN  , rsbxk(x[14],  k[14]), addsb(k[2], k[15], k[11]))
+    l3 = muladd(THIRTEEN, rsbxk(x[11],  k[11]), addsb(k[3], k[16], k[12]))
+    l4 = muladd(NINE    , rsbxk(x[8],   k[8]),  addsb(k[4], k[13], k[9]))
+    l5 = muladd(FOURTEEN, rsbxk(xp[1],  k[1]),  add( addsb(k[1], k[14], k[10]), h10))
+    l6 = muladd(ELEVEN  , rsbxk(xp[14], k[14]), addsb(k[2], k[15], k[11]))
+    l7 = muladd(THIRTEEN, rsbxk(xp[11], k[11]), addsb(k[3], k[16], k[12]))
+    l8 = muladd(NINE    , rsbxk(xp[8],  k[8]),  addsb(k[4], k[13], k[9]))
     return add (RSubBytes(addadd(l1, l2, l3, l4)), RSubBytes(addadd(l5, l6, l7, l8)))
 
 def equ2(x, xp, k) :
-    l1 = muladd( 9, rsbxk(x[13],  k[13]), add(k[13], k[9]))
-    l2 = muladd(14, rsbxk(x[10],  k[10]), add(k[10], k[14]))
-    l3 = muladd(11, rsbxk(x[7],   k[7]),  add(k[15], k[11]))
-    l4 = muladd(13, rsbxk(x[4],   k[4]),  add(k[16], k[12]))
-    l5 = muladd( 9, rsbxk(xp[13], k[13]), add(k[13], k[9]))
-    l6 = muladd(14, rsbxk(xp[10], k[10]), add(k[10], k[14]))
-    l7 = muladd(11, rsbxk(xp[7],  k[7]),  add(k[15], k[11]))
-    l8 = muladd(13, rsbxk(xp[4],  k[4]),  add(k[16], k[12]))
+    l1 = muladd(NINE    , rsbxk(x[13],  k[13]), add(k[13], k[9]))
+    l2 = muladd(FOURTEEN, rsbxk(x[10],  k[10]), add(k[10], k[14]))
+    l3 = muladd(ELEVEN  , rsbxk(x[7],   k[7]),  add(k[15], k[11]))
+    l4 = muladd(THIRTEEN, rsbxk(x[4],   k[4]),  add(k[16], k[12]))
+    l5 = muladd(NINE    , rsbxk(xp[13], k[13]), add(k[13], k[9]))
+    l6 = muladd(FOURTEEN, rsbxk(xp[10], k[10]), add(k[10], k[14]))
+    l7 = muladd(ELEVEN  , rsbxk(xp[7],  k[7]),  add(k[15], k[11]))
+    l8 = muladd(THIRTEEN, rsbxk(xp[4],  k[4]),  add(k[16], k[12]))
     return add (RSubBytes(addadd(l1, l2, l3, l4)), RSubBytes(addadd(l5, l6, l7, l8)))
 
 def equ3(x, xp, k) :
-    l1 = muladd(13, rsbxk(x[9],   k[9]),  add(k[9],  k[5]))
-    l2 = muladd( 9, rsbxk(x[6],   k[6]),  add(k[10], k[6]))
-    l3 = muladd(14, rsbxk(x[3],   k[3]),  add(k[11], k[7]))
-    l4 = muladd(11, rsbxk(x[16],  k[16]), add(k[12], k[8]))
-    l5 = muladd(13, rsbxk(xp[9],  k[9]),  add(k[9],  k[5]))
-    l6 = muladd( 9, rsbxk(xp[6],  k[6]),  add(k[10], k[6]))
-    l7 = muladd(14, rsbxk(xp[3],  k[3]),  add(k[11], k[7]))
-    l8 = muladd(11, rsbxk(xp[16], k[16]), add(k[12], k[8]))
+    l1 = muladd(THIRTEEN, rsbxk(x[9],   k[9]),  add(k[9],  k[5]))
+    l2 = muladd(NINE    , rsbxk(x[6],   k[6]),  add(k[10], k[6]))
+    l3 = muladd(FOURTEEN, rsbxk(x[3],   k[3]),  add(k[11], k[7]))
+    l4 = muladd(ELEVEN  , rsbxk(x[16],  k[16]), add(k[12], k[8]))
+    l5 = muladd(THIRTEEN, rsbxk(xp[9],  k[9]),  add(k[9],  k[5]))
+    l6 = muladd(NINE    , rsbxk(xp[6],  k[6]),  add(k[10], k[6]))
+    l7 = muladd(FOURTEEN, rsbxk(xp[3],  k[3]),  add(k[11], k[7]))
+    l8 = muladd(ELEVEN  , rsbxk(xp[16], k[16]), add(k[12], k[8]))
     return add (RSubBytes(addadd(l1, l2, l3, l4)), RSubBytes(addadd(l5, l6, l7, l8)))
 
 def equ4(x, xp, k) :
-    l1 = muladd(11, rsbxk(x[5],   k[5]),  add(k[5],  k[1]))
-    l2 = muladd(13, rsbxk(x[2],   k[2]),  add(k[6],  k[2]))
-    l3 = muladd(9,  rsbxk(x[15],  k[15]), add(k[7],  k[3]))
-    l4 = muladd(14, rsbxk(x[12],  k[12]), add(k[8],  k[4]))
-    l5 = muladd(11, rsbxk(xp[5],  k[5]),  add(k[5],  k[1]))
-    l6 = muladd(13, rsbxk(xp[2],  k[2]),  add(k[6],  k[2]))
-    l7 = muladd(9,  rsbxk(xp[15], k[15]), add(k[7],  k[3]))
-    l8 = muladd(14, rsbxk(xp[12], k[12]), add(k[8],  k[4]))
+    l1 = muladd(ELEVEN  , rsbxk(x[5],   k[5]),  add(k[5],  k[1]))
+    l2 = muladd(THIRTEEN, rsbxk(x[2],   k[2]),  add(k[6],  k[2]))
+    l3 = muladd(NINE    ,  rsbxk(x[15],  k[15]), add(k[7],  k[3]))
+    l4 = muladd(FOURTEEN, rsbxk(x[12],  k[12]), add(k[8],  k[4]))
+    l5 = muladd(ELEVEN  , rsbxk(xp[5],  k[5]),  add(k[5],  k[1]))
+    l6 = muladd(THIRTEEN, rsbxk(xp[2],  k[2]),  add(k[6],  k[2]))
+    l7 = muladd(NINE    ,  rsbxk(xp[15], k[15]), add(k[7],  k[3]))
+    l8 = muladd(FOURTEEN, rsbxk(xp[12], k[12]), add(k[8],  k[4]))
     return add (RSubBytes(addadd(l1, l2, l3, l4)), RSubBytes(addadd(l5, l6, l7, l8)))
 
 def step2(abc) :
@@ -493,37 +525,44 @@ def step2(abc) :
     k = (0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16)
 
     h10 = 0x36
-    global kcount
 
     f1 = equ1(x, xp, k, h10)
     f2 = equ2(x, xp, k)
+    if f1 != mulTab[TWO, f2] :
+        return 0
     f3 = equ3(x, xp, k)
+    if f2 != f3 :
+        return 0
     f4 = equ4(x, xp, k)
+    if f4 != mulTab[THREE, f3] :
+        return 0
 
-    if mul(2,f2) == f1 and f2 == f3 and mul(3, f3) == f4 :
-        kcount += 1
-        return k
+    # print str(f1) + " " + str(f2) + " " + str(f3) + " " + str(f4)
+
+    if getMul(TWO, f1) == f2 == f3 == getMul(THREE, f4) :
+        return (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16)
     else :
         return 0
 
 ################################################################################
 
 def getString(k) :
-    (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp) = k
+    (k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16) = k
     key = "%X%X%X%X%X%X%X%X%X%X%X%X%X%X%X%X" % (k1,k2,k3,k4,k5,k6,k7,k8,k9,k10,k11,k12,k13,k14,k15,k16)
     return key
 
-def test_key() :
+def test_key(k) :
     plaintext = str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]
     ciphertext = interact('', plaintext)
+    ciphertext = int(ciphertext, 16)
 
-    key = getString()
+    key = getString(k)
 
-    IV = 16 * '\x00'
-    mode = AES.MODE_CBC
-    encryptor = AES.new(key, mode, IV=IV)
+    # Encryption
+    enc = AES.new(key, AES.MODE_CBC, 'This is an IV456')
+    cipher_text = enc.encrypt(plaintext)
 
-    test_ciphertext = int(encryptor.encrypt(plaintext), 16)
+    test_ciphertext = int(cipher_text, 16)
 
     if test_ciphertext == ciphertext :
         return 1
@@ -562,7 +601,12 @@ def attack(pool) :
     set4 = equation4(x, xp)
     print "Keys: " + str(len(set4))
 
-    inputs = []
+    length = len(set4)
+
+    inputs = [None] * length
+
+    validKeys = []
+    add = validKeys.append
 
     x  = getByteList(x)
     xp = getByteList(xp)
@@ -570,45 +614,54 @@ def attack(pool) :
     total = len(set1) * len(set2) * len(set3) * len(set4)
     i = 0
 
-    add = inputs.append
-
     print "Step 2 :"
     for a in xrange(len(set1)):
         (k1, k8, k11, k14) = set1[a]
+        abc = 0
         for b in xrange(len(set2)) :
             (k2, k5, k12, k15) = set2[b]
             for c in xrange(len(set3)) :
+                ii = 0
                 (k3, k6, k9, k16) = set3[c]
                 for d in xrange(len(set4)) :
                     (k4, k7, k10, k13) = set4[d]
 
-                    add((k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp))
+                    inputs[ii] = (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp)
+                    ii=ii+1
 
                     i+=1
-                    sys.stdout.write("\rDoing thing %d/%d, keys found: %d" %(i,total, kcount))
-                    sys.stdout.flush()
+                    # sys.stdout.write("\rDoing thing %d/%d, keys found: %d" %(i,total, kcount))
+                    # sys.stdout.flush()
 
                 keys = pool.map( step2, inputs )
-                inputs = []
                 for sk in xrange(len(keys)) :
                     if keys[sk] != 0 :
-                        if test_key(keys[sk]) :
-                            return 1
+                        # if test_key(keys[sk]) :
+                        #     return 1
+                        add(keys[sk])
+                        abc += 1
 
+
+        print str(abc)
 
 if ( __name__ == "__main__" ) :
-  # Produce a sub-process representing the attack target.
-  target = subprocess.Popen( args   = sys.argv[ 1 ],
+    # Produce a sub-process representing the attack target.
+    target = subprocess.Popen( args   = sys.argv[ 1 ],
                              stdout = subprocess.PIPE,
                              stdin  = subprocess.PIPE )
 
-  # Construct handles to attack target standard input and output.
-  target_out = target.stdout
-  target_in  = target.stdin
+    # Construct handles to attack target standard input and output.
+    target_out = target.stdout
+    target_in  = target.stdin
 
-  pool = multiprocessing.Pool(multiprocessing.cpu_count())
+    pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
-  # Execute a function representing the attacker.
-  while 1 :
-      if attack(pool) == 1 :
-          break
+    getMultiplicationTable()
+
+    pprint(mulTab)
+
+    # Execute a function representing the attacker.
+    # while 1 :
+    #     if attack(pool) == 1 :
+    #         break
+    attack(pool)
