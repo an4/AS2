@@ -6,7 +6,6 @@ import numpy
 
 BLOCK_SIZE = 128
 RANGE = 256
-kcount = 0
 
 # indices for multiplication table
 TWO = 0
@@ -16,8 +15,6 @@ NINE = 3
 ELEVEN = 4
 THIRTEEN = 5
 FOURTEEN = 6
-
-mulTab = numpy.zeros((7, RANGE), dtype=int)
 
 # Rijndael S-box
 sbox =  [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
@@ -132,31 +129,7 @@ def mul(a, b) :
         b >>= 1
     return p % 256
 
-def getMultiplicationTable() :
-    # *2 | 0
-    for i in xrange(RANGE) :
-        mulTab[TWO][i] = mul(2, i)
-    # *3 | 1
-    for i in xrange(RANGE) :
-        mulTab[THREE][i] = mul(3, i)
-    # *6 | 2
-    for i in xrange(RANGE) :
-        mulTab[SIX][i] = mul(6, i)
-    # *9 | 3
-    for i in xrange(RANGE) :
-        mulTab[NINE][i] = mul(9, i)
-    # *11 | 4
-    for i in xrange(RANGE) :
-        mulTab[ELEVEN][i] = mul(11, i)
-    # *13 | 5
-    for i in xrange(RANGE) :
-        mulTab[THIRTEEN][i] = mul(13, i)
-    # *14 | 6
-    for i in xrange(RANGE) :
-        mulTab[FOURTEEN][i] = mul(14, i)
 
-def getMul(a, b) :
-    return mulTab[a][b]
 
 def interact( fault, message ) :
   # Send fault and message to attack target.
@@ -204,14 +177,14 @@ def equation1(x, xp) :
     # possible key values
     keyBytes = []
 
-    for d1 in range(1, 256) :
+    for d1 in range(1, RANGE) :
         k1  = []
         k8  = []
         k11 = []
         k14 = []
 
         # k1
-        for k in range(256) :
+        for k in range(RANGE) :
             if getMul(TWO, d1) == eq(x1, xp1, k) :
                 k1.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -220,7 +193,7 @@ def equation1(x, xp) :
             continue
 
         # k14
-        for k in range(256) :
+        for k in range(RANGE) :
             if d1 == eq(x14, xp14, k) :
                 k14.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -229,7 +202,7 @@ def equation1(x, xp) :
             continue
 
         # k11
-        for k in range(256) :
+        for k in range(RANGE) :
             if d1 == eq(x11, xp11, k) :
                 k11.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -238,7 +211,7 @@ def equation1(x, xp) :
             continue
 
         # k8
-        for k in range(256) :
+        for k in range(RANGE) :
             if getMul(THREE, d1) == eq(x8, xp8, k) :
                 k8.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -270,14 +243,14 @@ def equation2(x, xp) :
     # possible key values
     keyBytes = []
 
-    for d2 in range(1, 256) :
+    for d2 in range(1, RANGE) :
         k2  = []
         k5  = []
         k12 = []
         k15 = []
 
         # k5
-        for k in range(256) :
+        for k in range(RANGE) :
             if d2 == eq(x5, xp5, k) :
                 k5.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -286,7 +259,7 @@ def equation2(x, xp) :
             continue
 
         # k2
-        for k in range(256) :
+        for k in range(RANGE) :
             if d2 == eq(x2, xp2, k) :
                 k2.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -295,7 +268,7 @@ def equation2(x, xp) :
             continue
 
         # k15
-        for k in range(256) :
+        for k in range(RANGE) :
             if getMul(THREE, d2) == eq(x15, xp15, k) :
                 k15.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -304,7 +277,7 @@ def equation2(x, xp) :
             continue
 
         # k12
-        for k in range(256) :
+        for k in range(RANGE) :
             if getMul(TWO, d2) == eq(x12, xp12, k) :
                 k12.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -336,14 +309,14 @@ def equation3(x, xp) :
     # possible key values
     keyBytes = []
 
-    for d3 in range(1, 256) :
+    for d3 in range(1, RANGE) :
         k3  = []
         k6  = []
         k9  = []
         k16 = []
 
         # k9
-        for k in range(256) :
+        for k in range(RANGE) :
             if d3 == eq(x9, xp9, k) :
                 k9.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -352,7 +325,7 @@ def equation3(x, xp) :
             continue
 
         # k6
-        for k in range(256) :
+        for k in range(RANGE) :
             if getMul(THREE, d3) == eq(x6, xp6, k) :
                 k6.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -361,7 +334,7 @@ def equation3(x, xp) :
             continue
 
         # k3
-        for k in range(256) :
+        for k in range(RANGE) :
             if getMul(TWO, d3) == eq(x3, xp3, k) :
                 k3.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -370,7 +343,7 @@ def equation3(x, xp) :
             continue
 
         # k16
-        for k in range(256) :
+        for k in range(RANGE) :
             if d3 == eq(x16, xp16, k) :
                 k16.append(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -403,7 +376,7 @@ def equation4(x, xp) :
     keyBytes = []
     addKeyBytes = keyBytes.append
 
-    for d4 in xrange(1, 256) :
+    for d4 in xrange(1, RANGE) :
         k4  = []
         k7  = []
         k10 = []
@@ -415,7 +388,7 @@ def equation4(x, xp) :
         add13 = k13.append
 
         # k13
-        for k in xrange(256) :
+        for k in xrange(RANGE) :
             if getMul(THREE, d4) == eq(x13, xp13, k) :
                 add13(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -424,7 +397,7 @@ def equation4(x, xp) :
             continue
 
         # k10
-        for k in xrange(256) :
+        for k in xrange(RANGE) :
             if getMul(TWO, d4) == eq(x10, xp10, k) :
                 add10(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -433,7 +406,7 @@ def equation4(x, xp) :
             continue
 
         # k7
-        for k in xrange(256) :
+        for k in xrange(RANGE) :
             if d4 == eq(x7, xp7, k) :
                 add7(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -442,7 +415,7 @@ def equation4(x, xp) :
             continue
 
         # k4
-        for k in xrange(256) :
+        for k in xrange(RANGE) :
             if d4 == eq(x4, xp4, k) :
                 add4(k)
         # If the equation cannot be satisfied there is an impossible differential
@@ -496,6 +469,7 @@ def solve_a(N,a,b,c,d,e, h10) :
     r6 = add(r5, h10)
 
     r7 = add(r2, r6)
+
     return getMul(N , r7)
 
 def solve_b(N,a,b,c,d,e) :
@@ -645,18 +619,39 @@ def inv_key_round(ik, r) :
 
 def inv_key(ik) :
     for i in range(10, 0, -1) :
-        ik = inv_key_round(ik, r)
+        ik = inv_key_round(ik, i)
     return ik
 
+
+# http://eli.thegreenplace.net/2010/06/25/aes-encryption-of-files-in-python-with-pycrypto
 def test_key(k_10th) :
     # invert key
-    key = inv_key(k_10th)
+    key_tpl = inv_key(k_10th)
+
+    key = getString(k_10th).zfill(32)
+
+    IV = 16 * '\x00'
+    mode = AES.MODE_CBC
+    enc = AES.new(key, mode, IV=IV)
+
+    plaintext = (str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]).zfill(32)
+
+    # Encrypt
+    ciphertext_a = enc.encrypt(plaintext)
+
+    # Encrypt
+    ciphertext_b = "%X" % interact('', plaintext)
+
+    if ciphertext_a == ciphertext_b :
+        print "Key Found"
+        return key
+    else :
+        return -1
 
 
 def attack(pool) :
     # Generate plaintext
-    # plaintext = str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]
-    plaintext = 'c11294579189ce96fc1c0b91bf373fca'
+    plaintext = str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]
 
     # Get fault
     fault = getFault()
@@ -665,8 +660,6 @@ def attack(pool) :
     xp = "%X" % interact(fault, plaintext)
     # Get correct ciphertext
     x = "%X" % interact('', plaintext)
-
-    xp = "7F8A59622317934065D14C3D67F9D152"
 
     print "Step 1 :"
     # k1, k8, k11, k14
@@ -691,19 +684,17 @@ def attack(pool) :
 
     inputs = [None] * length
 
-    validKeys = []
-    add = validKeys.append
-
     x  = getByteList(x)
     xp = getByteList(xp)
 
     total = len(set1) * len(set2) * len(set3) * len(set4)
     i = 0
 
+    kcount = 0
+
     print "Step 2 :"
     for a in xrange(len(set1)):
         (k1, k8, k11, k14) = set1[a]
-        abc = 0
         for b in xrange(len(set2)) :
             (k2, k5, k12, k15) = set2[b]
             for c in xrange(len(set3)) :
@@ -713,25 +704,50 @@ def attack(pool) :
                     (k4, k7, k10, k13) = set4[d]
 
                     inputs[ii] = (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp)
+
                     ii=ii+1
 
-                    # 10th Round Key
-                    print step2_all((k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp))
-
                     i+=1
-                    # sys.stdout.write("\rDoing thing %d/%d, keys found: %d" %(i,total, kcount))
-                    # sys.stdout.flush()
+                    sys.stdout.write("\rDoing thing %d/%d, keys found: %d" %(i,total, kcount))
+                    sys.stdout.flush()
 
-                # keys = pool.map( step2_all, inputs )
-                # for sk in xrange(len(keys)) :
-                #     if keys[sk] != -1 :
-                #         # if test_key(keys[sk]) :
-                #         #     return 1
-                #         add(keys[sk])
-                #         abc += 1
+                keys = pool.map( step2_all, inputs )
+                for sk in keys :
+                    if sk != -1 :
+                        print "Testing key ..."
+                        kcount += 1
+                        pk = test_key(sk)
+                        if pk != -1 :
+                            print pk
+                            return 1
 
+mulTab = numpy.zeros((7, RANGE), dtype=int)
 
-        print str(abc)
+# *2 | 0
+for i in range(RANGE) :
+    mulTab[TWO][i] = mul(2, i)
+# *3 | 1
+for i in range(RANGE) :
+    mulTab[THREE][i] = mul(3, i)
+# *6 | 2
+for i in range(RANGE) :
+    mulTab[SIX][i] = mul(6, i)
+# *9 | 3
+for i in range(RANGE) :
+    mulTab[NINE][i] = mul(9, i)
+# *11 | 4
+for i in range(RANGE) :
+    mulTab[ELEVEN][i] = mul(11, i)
+# *13 | 5
+for i in range(RANGE) :
+    mulTab[THIRTEEN][i] = mul(13, i)
+# *14 | 6
+for i in range(RANGE) :
+    mulTab[FOURTEEN][i] = mul(14, i)
+
+def getMul(a, b) :
+    global mulTab
+    return mulTab[a][b]
 
 if ( __name__ == "__main__" ) :
     # Produce a sub-process representing the attack target.
@@ -745,10 +761,7 @@ if ( __name__ == "__main__" ) :
 
     pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
-    getMultiplicationTable()
-
     # Execute a function representing the attacker.
-    # while 1 :
-    #     if attack(pool) == 1 :
-    #         break
-    attack(pool)
+    while 1 :
+        if attack(pool) == 1 :
+            break
