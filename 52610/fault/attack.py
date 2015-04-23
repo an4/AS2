@@ -708,17 +708,17 @@ def attack(pool) :
                     ii=ii+1
 
                     i+=1
-                    sys.stdout.write("\rDoing thing %d/%d, keys found: %d" %(i,total, kcount))
-                    sys.stdout.flush()
+                    # sys.stdout.write("\rDoing thing %d/%d, keys found: %d" %(i,total, kcount))
+                    # sys.stdout.flush()
 
-                keys = pool.map( step2_all, inputs )
-                for sk in keys :
-                    if sk != -1 :
-                        print "Testing key ..."
-                        kcount += 1
-                        pk = test_key(sk)
-                        if pk != -1 :
-                            print pk
+            keys = pool.map( step2_all, inputs )
+            for sk in keys :
+                if sk != -1 :
+                    print "Testing key ..."
+                    kcount += 1
+                    pk = test_key(sk)
+                    if pk != -1 :
+                        print pk
                             return 1
 
 mulTab = numpy.zeros((7, RANGE), dtype=int)
