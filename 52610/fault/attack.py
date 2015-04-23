@@ -719,7 +719,7 @@ def attack(pool) :
                     pk = test_key(sk)
                     if pk != -1 :
                         print pk
-                            return 1
+                        return 1
 
 mulTab = numpy.zeros((7, RANGE), dtype=int)
 
