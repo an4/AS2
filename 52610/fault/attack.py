@@ -3,7 +3,6 @@ import random
 import multiprocessing
 from Crypto.Cipher import AES
 import numpy
-from pprint import pprint
 
 BLOCK_SIZE = 128
 RANGE = 256
@@ -12,12 +11,13 @@ kcount = 0
 # indices for multiplication table
 TWO = 0
 THREE = 1
-NINE = 2
-ELEVEN = 3
-THIRTEEN = 4
-FOURTEEN = 5
+SIX = 2
+NINE = 3
+ELEVEN = 4
+THIRTEEN = 5
+FOURTEEN = 6
 
-mulTab = numpy.zeros((6, RANGE), dtype=int)
+mulTab = numpy.zeros((7, RANGE), dtype=int)
 
 # Rijndael S-box
 sbox =  [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
@@ -113,16 +113,19 @@ def getMultiplicationTable() :
     # *3 | 1
     for i in xrange(RANGE) :
         mulTab[THREE][i] = mul(3, i)
-    # *9 | 2
+    # *6 | 2
+    for i in xrange(RANGE) :
+        mulTab[SIX][i] = mul(6, i)
+    # *9 | 3
     for i in xrange(RANGE) :
         mulTab[NINE][i] = mul(9, i)
-    # *11 | 3
+    # *11 | 4
     for i in xrange(RANGE) :
         mulTab[ELEVEN][i] = mul(11, i)
-    # *13 | 4
+    # *13 | 5
     for i in xrange(RANGE) :
         mulTab[THIRTEEN][i] = mul(13, i)
-    # *14 | 5
+    # *14 | 6
     for i in xrange(RANGE) :
         mulTab[FOURTEEN][i] = mul(14, i)
 
@@ -132,10 +135,10 @@ def getMul(a, b) :
 def interact( fault, message ) :
   # Send fault and message to attack target.
   target_in.write( "%s\n" % ( fault ) ) ; target_in.flush()
-  target_in.write( "%s\n" % ( message.zfill(32) ) ) ; target_in.flush()
+  target_in.write( "%s\n" % ( message ) ) ; target_in.flush()
 
   # Receive ciphertext from attack target.
-  return target_out.readline().strip()
+  return int(target_out.readline().strip(), 16)
 
 # Return the fault specification as a 5-element tuple
 def getFault() :
@@ -456,93 +459,133 @@ def getByteList(x) :
     # starts from 1
     return (0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16)
 
-# RSubBytes(add(a, b))
-def rsbxk(a, b) :
-    return RSubBytes( add(a, b) )
+# Version 2.0
+def solve_a(N,a,b,c,d,e, h10) :
+    r1 = add(a, b)
+    r2 = RSubBytes(r1)
 
-# SubBytes(add(a, b))
-def sbxk(a, b) :
-    return SubBytes( add(a, b) )
+    r3 = add(d, e)
+    r4 = SubBytes(r3)
+    r5 = add(c, r4)
+    r6 = add(r5, h10)
 
-def addsb(a, b, c) :
-    return add(a, sbxk(b, c))
+    r7 = add(r2, r6)
+    return getMul(N , r7)
 
-def addrsb(a, b, c) :
-    return add(a, rsbxk(b, c))
+def solve_b(N,a,b,c,d,e) :
+    r1 = add(a, b)
+    r2 = RSubBytes(r1)
 
-def muladd(a, b, c) :
-    return mulTab[a, add(b, c)]
+    r3 = add(d, e)
+    r4 = SubBytes(r3)
+    r5 = add(c, r4)
 
-def addadd(a, b, c, d) :
-    return add(add(a, b), add(c, d))
+    r6 = add(r2, r5)
+    return getMul(N, r6)
 
-def equ1(x, xp, k, h10) :
-    l1 = muladd(FOURTEEN, rsbxk(x[1],   k[1]),  add( addsb(k[1], k[14], k[10]), h10))
-    l2 = muladd(ELEVEN  , rsbxk(x[14],  k[14]), addsb(k[2], k[15], k[11]))
-    l3 = muladd(THIRTEEN, rsbxk(x[11],  k[11]), addsb(k[3], k[16], k[12]))
-    l4 = muladd(NINE    , rsbxk(x[8],   k[8]),  addsb(k[4], k[13], k[9]))
-    l5 = muladd(FOURTEEN, rsbxk(xp[1],  k[1]),  add( addsb(k[1], k[14], k[10]), h10))
-    l6 = muladd(ELEVEN  , rsbxk(xp[14], k[14]), addsb(k[2], k[15], k[11]))
-    l7 = muladd(THIRTEEN, rsbxk(xp[11], k[11]), addsb(k[3], k[16], k[12]))
-    l8 = muladd(NINE    , rsbxk(xp[8],  k[8]),  addsb(k[4], k[13], k[9]))
-    return add (RSubBytes(addadd(l1, l2, l3, l4)), RSubBytes(addadd(l5, l6, l7, l8)))
+def solve_c(N, a,b, c, d) :
+    r1 = add(a, b)
+    r2 = RSubBytes(r1)
 
-def equ2(x, xp, k) :
-    l1 = muladd(NINE    , rsbxk(x[13],  k[13]), add(k[13], k[9]))
-    l2 = muladd(FOURTEEN, rsbxk(x[10],  k[10]), add(k[10], k[14]))
-    l3 = muladd(ELEVEN  , rsbxk(x[7],   k[7]),  add(k[15], k[11]))
-    l4 = muladd(THIRTEEN, rsbxk(x[4],   k[4]),  add(k[16], k[12]))
-    l5 = muladd(NINE    , rsbxk(xp[13], k[13]), add(k[13], k[9]))
-    l6 = muladd(FOURTEEN, rsbxk(xp[10], k[10]), add(k[10], k[14]))
-    l7 = muladd(ELEVEN  , rsbxk(xp[7],  k[7]),  add(k[15], k[11]))
-    l8 = muladd(THIRTEEN, rsbxk(xp[4],  k[4]),  add(k[16], k[12]))
-    return add (RSubBytes(addadd(l1, l2, l3, l4)), RSubBytes(addadd(l5, l6, l7, l8)))
+    r3 = add(c, d)
 
-def equ3(x, xp, k) :
-    l1 = muladd(THIRTEEN, rsbxk(x[9],   k[9]),  add(k[9],  k[5]))
-    l2 = muladd(NINE    , rsbxk(x[6],   k[6]),  add(k[10], k[6]))
-    l3 = muladd(FOURTEEN, rsbxk(x[3],   k[3]),  add(k[11], k[7]))
-    l4 = muladd(ELEVEN  , rsbxk(x[16],  k[16]), add(k[12], k[8]))
-    l5 = muladd(THIRTEEN, rsbxk(xp[9],  k[9]),  add(k[9],  k[5]))
-    l6 = muladd(NINE    , rsbxk(xp[6],  k[6]),  add(k[10], k[6]))
-    l7 = muladd(FOURTEEN, rsbxk(xp[3],  k[3]),  add(k[11], k[7]))
-    l8 = muladd(ELEVEN  , rsbxk(xp[16], k[16]), add(k[12], k[8]))
-    return add (RSubBytes(addadd(l1, l2, l3, l4)), RSubBytes(addadd(l5, l6, l7, l8)))
+    r4 = add(r2, r3)
+    return getMul(N, r4)
 
-def equ4(x, xp, k) :
-    l1 = muladd(ELEVEN  , rsbxk(x[5],   k[5]),  add(k[5],  k[1]))
-    l2 = muladd(THIRTEEN, rsbxk(x[2],   k[2]),  add(k[6],  k[2]))
-    l3 = muladd(NINE    ,  rsbxk(x[15],  k[15]), add(k[7],  k[3]))
-    l4 = muladd(FOURTEEN, rsbxk(x[12],  k[12]), add(k[8],  k[4]))
-    l5 = muladd(ELEVEN  , rsbxk(xp[5],  k[5]),  add(k[5],  k[1]))
-    l6 = muladd(THIRTEEN, rsbxk(xp[2],  k[2]),  add(k[6],  k[2]))
-    l7 = muladd(NINE    ,  rsbxk(xp[15], k[15]), add(k[7],  k[3]))
-    l8 = muladd(FOURTEEN, rsbxk(xp[12], k[12]), add(k[8],  k[4]))
-    return add (RSubBytes(addadd(l1, l2, l3, l4)), RSubBytes(addadd(l5, l6, l7, l8)))
-
-def step2(abc) :
-    (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp) = abc
-    k = (0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16)
-
+def step2_eq1(k, x, xp) :
     h10 = 0x36
 
-    f1 = equ1(x, xp, k, h10)
-    f2 = equ2(x, xp, k)
-    if f1 != mulTab[TWO, f2] :
-        return 0
-    f3 = equ3(x, xp, k)
-    if f2 != f3 :
-        return 0
-    f4 = equ4(x, xp, k)
-    if f4 != mulTab[THREE, f3] :
-        return 0
+    r1 = solve_a(FOURTEEN, x[1],  k[1],  k[1], k[14], k[10], h10)
+    r2 = solve_b(ELEVEN,   x[14], k[14], k[2], k[15], k[11])
+    r3 = solve_b(THIRTEEN, x[11], k[11], k[3], k[16], k[12])
+    r4 = solve_b(NINE,     x[8],  k[8],  k[4], k[13], k[9])
+    ra = RSubBytes(add(r1, add(r2, add(r3, r4))))
 
-    # print str(f1) + " " + str(f2) + " " + str(f3) + " " + str(f4)
+    r5 = solve_a(FOURTEEN, xp[1],  k[1],  k[1], k[14], k[10], h10)
+    r6 = solve_b(ELEVEN,   xp[14], k[14], k[2], k[15], k[11])
+    r7 = solve_b(THIRTEEN, xp[11], k[11], k[3], k[16], k[12])
+    r8 = solve_b(NINE,     xp[8],  k[8],  k[4], k[13], k[9])
+    rb = RSubBytes(add(r5, add(r6, add(r7, r8))))
 
-    if getMul(TWO, f1) == f2 == f3 == getMul(THREE, f4) :
-        return (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16)
+    return add(ra, rb)
+
+def step2_eq2(k, x, xp) :
+    r1 = solve_c(NINE,     x[13], k[13], k[13], k[9])
+    r2 = solve_c(FOURTEEN, x[10], k[10], k[10], k[14])
+    r3 = solve_c(ELEVEN,   x[7],  k[7],  k[15], k[11])
+    r4 = solve_c(THIRTEEN, x[4],  k[4],  k[16], k[12])
+    ra = RSubBytes(add(r1, add(r2, add(r3, r4))))
+
+    r5 = solve_c(NINE,     xp[13], k[13], k[13], k[9])
+    r6 = solve_c(FOURTEEN, xp[10], k[10], k[10], k[14])
+    r7 = solve_c(ELEVEN,   xp[7],  k[7],  k[15], k[11])
+    r8 = solve_c(THIRTEEN, xp[4],  k[4],  k[16], k[12])
+    rb = RSubBytes(add(r5, add(r6, add(r7, r8))))
+
+    return add(ra, rb)
+
+def step2_eq3(k, x, xp) :
+    r1 = solve_c(THIRTEEN, x[9],  k[9],  k[9],  k[5])
+    r2 = solve_c(NINE,     x[6],  k[6],  k[10], k[6])
+    r3 = solve_c(FOURTEEN, x[3],  k[3],  k[11], k[7])
+    r4 = solve_c(ELEVEN,   x[16], k[16], k[12], k[8])
+    ra = RSubBytes(add(r1, add(r2, add(r3, r4))))
+
+    r5 = solve_c(THIRTEEN, xp[9],  k[9],  k[9],  k[5])
+    r6 = solve_c(NINE,     xp[6],  k[6],  k[10], k[6])
+    r7 = solve_c(FOURTEEN, xp[3],  k[3],  k[11], k[7])
+    r8 = solve_c(ELEVEN,   xp[16], k[16], k[12], k[8])
+    rb = RSubBytes(add(r5, add(r6, add(r7, r8))))
+
+    return add(ra, rb)
+
+def step2_eq4(k, x, xp) :
+    r1 = solve_c(ELEVEN,   x[5],  k[5],  k[5], k[1])
+    r2 = solve_c(THIRTEEN, x[2],  k[2],  k[6], k[2])
+    r3 = solve_c(NINE,     x[15], k[15], k[7], k[3])
+    r4 = solve_c(FOURTEEN, x[12], k[12], k[8], k[4])
+    ra = RSubBytes(add(r1, add(r2, add(r3, r4))))
+
+    r5 = solve_c(ELEVEN,   xp[5],  k[5],  k[5], k[1])
+    r6 = solve_c(THIRTEEN, xp[2],  k[2],  k[6], k[2])
+    r7 = solve_c(NINE,     xp[15], k[15], k[7], k[3])
+    r8 = solve_c(FOURTEEN, xp[12], k[12], k[8], k[4])
+    rb = RSubBytes(add(r5, add(r6, add(r7, r8))))
+
+    return add(ra, rb)
+
+def step2_all(k_x_xp) :
+    (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp) = k_x_xp
+    k = (0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16)
+
+    # 2*f
+    a = step2_eq1(k, x, xp)
+    # f
+    b = step2_eq2(k, x, xp)
+
+    # check 2*f == f
+    if a != getMul(TWO, b) :
+        return -1
+
+    # f
+    c = step2_eq3(k, x, xp)
+
+    # check f == f
+    if b != c :
+        return -1
+
+    # 3*f
+    d = step2_eq4(k, x, xp)
+
+    # check f == 3*f
+    if getMul(THREE, c) != d :
+        return -1
+
+    # check 2*f == f == f == 3*f
+    if getMul(THREE, a) == getMul(SIX, b) == getMul(SIX, c) == getMul(TWO, d) :
+        return k
     else :
-        return 0
+        return -1
 
 ################################################################################
 
@@ -553,8 +596,7 @@ def getString(k) :
 
 def test_key(k) :
     plaintext = str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]
-    ciphertext = interact('', plaintext)
-    ciphertext = int(ciphertext, 16)
+    ciphertext = "%X" % interact('', plaintext)
 
     key = getString(k)
 
@@ -573,20 +615,24 @@ def test_key(k) :
 
 def attack(pool) :
     # Generate plaintext
-    plaintext = str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]
+    # plaintext = str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]
+    plaintext = 'c11294579189ce96fc1c0b91bf373fca'
 
     # Get fault
     fault = getFault()
 
     # Get faulty ciphertext
-    xp = interact(fault, plaintext)
+    xp = "%X" % interact(fault, plaintext)
     # Get correct ciphertext
-    x = interact('', plaintext)
+    x = "%X" % interact('', plaintext)
+
+    xp = "7F8A59622317934065D14C3D67F9D152"
 
     print "Step 1 :"
     # k1, k8, k11, k14
     print "Set 1 ..."
     set1 = equation1(x, xp)
+
     print "Keys: " + str(len(set1))
     # k2, k5, k12, k15
     print "Set 2 ..."
@@ -629,17 +675,20 @@ def attack(pool) :
                     inputs[ii] = (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp)
                     ii=ii+1
 
+                    # 10th Round Key
+                    print step2_all((k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp))
+
                     i+=1
                     # sys.stdout.write("\rDoing thing %d/%d, keys found: %d" %(i,total, kcount))
                     # sys.stdout.flush()
 
-                keys = pool.map( step2, inputs )
-                for sk in xrange(len(keys)) :
-                    if keys[sk] != 0 :
-                        # if test_key(keys[sk]) :
-                        #     return 1
-                        add(keys[sk])
-                        abc += 1
+                # keys = pool.map( step2_all, inputs )
+                # for sk in xrange(len(keys)) :
+                #     if keys[sk] != -1 :
+                #         # if test_key(keys[sk]) :
+                #         #     return 1
+                #         add(keys[sk])
+                #         abc += 1
 
 
         print str(abc)
@@ -657,8 +706,6 @@ if ( __name__ == "__main__" ) :
     pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
     getMultiplicationTable()
-
-    pprint(mulTab)
 
     # Execute a function representing the attacker.
     # while 1 :
