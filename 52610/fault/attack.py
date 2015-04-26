@@ -3,6 +3,7 @@ import random
 import multiprocessing
 from Crypto.Cipher import AES
 import numpy
+from struct import pack, unpack
 
 BLOCK_SIZE = 128
 RANGE = 256
@@ -555,8 +556,7 @@ def step2_eq4(k, x, xp) :
     return add(ra, rb)
 
 def step2_all(k_x_xp) :
-    (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp) = k_x_xp
-    k = (0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16)
+    (k, x, xp) = k_x_xp
 
     # 2*f
     a = step2_eq1(k, x, xp)
@@ -589,11 +589,6 @@ def step2_all(k_x_xp) :
 
 ################################################################################
 
-def getString(k) :
-    (k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16) = k
-    key = "%X%X%X%X%X%X%X%X%X%X%X%X%X%X%X%X" % (k1,k2,k3,k4,k5,k6,k7,k8,k9,k10,k11,k12,k13,k14,k15,k16)
-    return key
-
 # http://www.samiam.org/key-schedule.html
 def inv_key_round(ik, r) :
     (ik0, ik1, ik2, ik3, ik4, ik5, ik6, ik7, ik8, ik9, ik10, ik11, ik12, ik13, ik14, ik15, ik16) = ik
@@ -620,29 +615,44 @@ def inv_key_round(ik, r) :
 def inv_key(ik) :
     for i in range(10, 0, -1) :
         ik = inv_key_round(ik, i)
-    return ik
 
+    (ik0, ik1, ik2, ik3, ik4, ik5, ik6, ik7, ik8, ik9, ik10, ik11, ik12, ik13, ik14, ik15, ik16) = ik
+
+    return (ik1, ik2, ik3, ik4, ik5, ik6, ik7, ik8, ik9, ik10, ik11, ik12, ik13, ik14, ik15, ik16)
+
+def getString(x) :
+    out = ""
+    for i in x :
+        out += "%X" % i
+    return out
 
 # http://eli.thegreenplace.net/2010/06/25/aes-encryption-of-files-in-python-with-pycrypto
 def test_key(k_10th) :
     # invert key
     key_tpl = inv_key(k_10th)
 
-    key = getString(k_10th).zfill(32)
+    key_str = pack( 16 * "B", *key_tpl )
 
-    IV = 16 * '\x00'
-    mode = AES.MODE_CBC
-    enc = AES.new(key, mode, IV=IV)
+    enc = AES.new(key_str)
 
     plaintext = (str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]).zfill(32)
+    (p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16) = getByteList(plaintext)
+    p = (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16)
+
+    p_str = pack( 16 * "B", *p )
 
     # Encrypt
-    ciphertext_a = enc.encrypt(plaintext)
+    cipher = enc.encrypt(p_str)
+    cipher_a = unpack( 16 * "B", cipher )
+    ciphertext_a = getString(cipher_a)
 
     # Encrypt
     ciphertext_b = "%X" % interact('', plaintext)
 
-    if ciphertext_a == ciphertext_b :
+    c_a = int(ciphertext_a, 16)
+    c_b = int(ciphertext_b, 16)
+
+    if ciphertext_a == ciphertext_b or c_a == c_b :
         print "Key Found"
         return key
     else :
@@ -680,7 +690,7 @@ def attack(pool) :
     set4 = equation4(x, xp)
     print "Keys: " + str(len(set4))
 
-    length = len(set4)
+    length = len(set4) * len(set3)
 
     inputs = [None] * length
 
@@ -694,16 +704,21 @@ def attack(pool) :
 
     print "Step 2 :"
     for a in xrange(len(set1)):
+        sys.stdout.write("\rDoing thing %.2f, keys found: %d" %((i/(total*1.0))*100, kcount))
+        sys.stdout.flush()
+
         (k1, k8, k11, k14) = set1[a]
         for b in xrange(len(set2)) :
             (k2, k5, k12, k15) = set2[b]
+
+            ii = 0
+
             for c in xrange(len(set3)) :
-                ii = 0
                 (k3, k6, k9, k16) = set3[c]
                 for d in xrange(len(set4)) :
                     (k4, k7, k10, k13) = set4[d]
 
-                    inputs[ii] = (k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, x, xp)
+                    inputs[ii] = ((0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16), x, xp)
 
                     ii=ii+1
 
@@ -762,6 +777,8 @@ if ( __name__ == "__main__" ) :
     pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
     # Execute a function representing the attacker.
-    while 1 :
-        if attack(pool) == 1 :
-            break
+    # while 1 :
+    #     if attack(pool) == 1 :
+    #         break
+
+    attack(pool)
