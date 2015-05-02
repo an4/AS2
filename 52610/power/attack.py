@@ -1,6 +1,17 @@
-import sys, subprocess
+import sys, subprocess, random
+from numpy import zeros
+from numpy import matrix
+from numpy import uint8
+from numpy import float32
+from numpy import corrcoef
 
 OCTET_SIZE = 32
+BYTES = 16
+SAMPLES = 100
+BITSIZE = 128
+KEYS = 256
+# ??
+TRACES = 200
 
 # Rijndael S-box
 sbox =  [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
@@ -28,6 +39,8 @@ sbox =  [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
         0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0,
         0x54, 0xbb, 0x16]
 
+def SubBytes(x) :
+    return sbox[x]
 
 def interactD( plaintext ) :
   # Send plaintext to attack target.
@@ -43,29 +56,116 @@ def interactD( plaintext ) :
 
 def getPowerTrace(trace) :
     traces_l = trace.split(',')
+
     length = int(traces_l[0])
 
     traces = []
-    add = traces.append
+    tadd = traces.append
 
     for i in xrange(1, length) :
         tadd(int(traces_l[i]))
 
     return traces
 
+# return new sample with trace and its ciphertext
+def getNew() :
+    # generate random plaintext
+    plaintext = "%X" % random.getrandbits(BITSIZE)
+    traces, ciphertext = interactD(plaintext)
+    # return fixed number of traces
+    return plaintext, traces[0:TRACES], ciphertext
+
+def getByte(number, index) :
+    ByteString = (number).zfill(OCTET_SIZE)
+    byte = ByteString[index*2 : (index+1)*2]
+    return int(byte, 16)
+
+# Get hypothetical intermediate values
+def getV(byte, plaintexts) :
+    V = zeros((SAMPLES, KEYS), uint8)
+
+    for i, p in enumerate(plaintexts) :
+        p_i = getByte(p, byte)
+        for k in range(KEYS) :
+            V[i][k] = SubBytes(p_i ^ k)
+
+    return V
+
+# Calculate Hamming Weight
+def hammingWeight(v) :
+    return bin(v).count("1")
+
+def getHammingWeightMatrix(V) :
+    HW = zeros((SAMPLES, KEYS), uint8)
+
+    for i in range(SAMPLES) :
+        for j in range(KEYS) :
+            HW[i][j] = hammingWeight(V[i][j])
+
+    return HW
+
+def attackByte(byte, samples) :
+    (plaintexts, traces, ciphertexts) = samples
+    V = getV(byte, plaintexts)
+    # Calculate hypothetical power consumption
+    H = getHammingWeightMatrix(V)
+
+    R = zeros((KEYS, TRACES), float32)
+
+    H_t = H.transpose()
+    T_t = traces.transpose()
+
+    for i in range(KEYS) :
+        for j in range(TRACES) :
+            R[i][j] = corrcoef(H_t[i], T_t[j])[0][1]
+
+    return R
+
 def attack() :
-  # ... then interact with the attack target.
-  interactD( "123" )
+    #Generate samples
+    print "Generating samples ..."
+    plaintexts = []
+    traces = []
+    ciphertexts = []
+    for i in range(SAMPLES):
+        (p, t, c) = getNew()
+        plaintexts.append(p)
+        traces.append(t)
+        ciphertexts.append(c)
+
+    # Measured power traces
+    T = matrix(traces)
+
+    samples = (plaintexts, T, ciphertexts)
+
+    key = ""
+
+    print "Start guessing key ..."
+    for i in range(BYTES):
+        R = attackByte(i, samples)
+        max_tr = R[0].max()
+        keyByte = 0
+        for k in range(1,KEYS):
+            temp = R[k].max()
+            if temp > max_tr :
+                max_tr = temp
+                keyByte = k
+
+        newByte = ("%X" % keyByte).zfill(2)
+        key += newByte
+
+    print "Key :"+key
+    print int(key, 16)
 
 if ( __name__ == "__main__" ) :
-  # Produce a sub-process representing the attack target.
-  target = subprocess.Popen( args   = sys.argv[ 1 ],
+    # Produce a sub-process representing the attack target.
+    target = subprocess.Popen( args   = sys.argv[ 1 ],
                              stdout = subprocess.PIPE,
                              stdin  = subprocess.PIPE )
 
-  # Construct handles to attack target standard input and output.
-  target_out = target.stdout
-  target_in  = target.stdin
+    # Construct handles to attack target standard input and output.
+    target_out = target.stdout
+    target_in  = target.stdin
 
-  # Execute a function representing the attacker.
-  attack()
+    # Execute a function representing the attacker.
+    attack()
