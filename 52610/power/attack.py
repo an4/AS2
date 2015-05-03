@@ -4,14 +4,14 @@ from numpy import matrix
 from numpy import uint8
 from numpy import float32
 from numpy import corrcoef
+from Crypto.Cipher import AES
 
 OCTET_SIZE = 32
 BYTES = 16
 SAMPLES = 200
 BITSIZE = 128
 KEYS = 256
-# ??
-TRACES = 3000
+TRACES = 2000
 
 # Rijndael S-box
 sbox =  [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
@@ -148,14 +148,28 @@ def attack() :
             if temp > max_tr :
                 max_tr = temp
                 keyByte = k
-
-        print max_tr
         newByte = ("%X" % keyByte).zfill(2)
         key += newByte
-        print newByte
+
+    testKey(key)
 
     print "Key :"+key
     print int(key, 16)
+
+def testKey(key):
+    key = key.decode("hex")
+    enc = AES.new(key)
+
+    p = "%X" % random.getrandbits(BITSIZE)
+
+    _, cipher = interactD(p)
+
+    print cipher
+
+    c = enc.encrypt(p)
+    ciphertext = c.encode("hex")
+
+    print ciphertext
 
 if ( __name__ == "__main__" ) :
     # Produce a sub-process representing the attack target.

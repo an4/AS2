@@ -54,6 +54,16 @@ STAGE 3:
     http://anh.cs.luc.edu/331/code/aes.py
     SubBytes Matrix
 
+STAGE 4:
+    I used the framework provided during the lab session for interacting with the
+    target device.
+
+    http://www.dpabook.org/onlinematerial/matlabscripts/index.htm
+
+    http://anh.cs.luc.edu/331/code/aes.py
+
+    Lecture slides
+
 -------------------------------------------------------------------------------
 
 4. Marking
@@ -95,7 +105,7 @@ the style or efficiency of a solution.
               - solution quality wrt. efficiency, robustness etc.    ( 40%)
               - analysis questions                                   ( 20%)
 
-              target material : [...]
+              target material : 61A4C140DD7409B8066A36F92AEF097A
                                                                      ------
                                                                      (400%)
 
