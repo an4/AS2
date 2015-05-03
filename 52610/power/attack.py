@@ -7,11 +7,11 @@ from numpy import corrcoef
 
 OCTET_SIZE = 32
 BYTES = 16
-SAMPLES = 100
+SAMPLES = 200
 BITSIZE = 128
 KEYS = 256
 # ??
-TRACES = 200
+TRACES = 3000
 
 # Rijndael S-box
 sbox =  [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
@@ -62,7 +62,7 @@ def getPowerTrace(trace) :
     traces = []
     tadd = traces.append
 
-    for i in xrange(1, length) :
+    for i in range(1, TRACES+1) :
         tadd(int(traces_l[i]))
 
     return traces
@@ -73,7 +73,7 @@ def getNew() :
     plaintext = "%X" % random.getrandbits(BITSIZE)
     traces, ciphertext = interactD(plaintext)
     # return fixed number of traces
-    return plaintext, traces[0:TRACES], ciphertext
+    return plaintext, traces
 
 def getByte(number, index) :
     ByteString = (number).zfill(OCTET_SIZE)
@@ -105,7 +105,7 @@ def getHammingWeightMatrix(V) :
     return HW
 
 def attackByte(byte, samples) :
-    (plaintexts, traces, ciphertexts) = samples
+    (plaintexts, traces) = samples
     V = getV(byte, plaintexts)
     # Calculate hypothetical power consumption
     H = getHammingWeightMatrix(V)
@@ -126,17 +126,15 @@ def attack() :
     print "Generating samples ..."
     plaintexts = []
     traces = []
-    ciphertexts = []
     for i in range(SAMPLES):
-        (p, t, c) = getNew()
+        (p, t) = getNew()
         plaintexts.append(p)
         traces.append(t)
-        ciphertexts.append(c)
 
     # Measured power traces
     T = matrix(traces)
 
-    samples = (plaintexts, T, ciphertexts)
+    samples = (plaintexts, T)
 
     key = ""
 
@@ -151,8 +149,10 @@ def attack() :
                 max_tr = temp
                 keyByte = k
 
+        print max_tr
         newByte = ("%X" % keyByte).zfill(2)
         key += newByte
+        print newByte
 
     print "Key :"+key
     print int(key, 16)
