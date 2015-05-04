@@ -5,13 +5,15 @@ from numpy import uint8
 from numpy import float32
 from numpy import corrcoef
 from Crypto.Cipher import AES
+from struct import pack
+from struct import unpack
 
 OCTET_SIZE = 32
 BYTES = 16
-SAMPLES = 200
+SAMPLES = 150
 BITSIZE = 128
 KEYS = 256
-TRACES = 2000
+TRACES = 1500
 
 # Rijndael S-box
 sbox =  [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67,
@@ -112,18 +114,22 @@ def attackByte(byte, samples) :
 
     R = zeros((KEYS, TRACES), float32)
 
+    # Transpose H and T, each column becomes a row. Easier to access rows.
     H_t = H.transpose()
     T_t = traces.transpose()
 
+    # Compute the correlation between each column of H and each column of T.
     for i in range(KEYS) :
         for j in range(TRACES) :
+            # Correlation matrix is symmetric, [0][1] = [1][0]
             R[i][j] = corrcoef(H_t[i], T_t[j])[0][1]
 
     return R
 
 def attack() :
     #Generate samples
-    print "Generating samples ..."
+    print "Generating %d samples ..." % SAMPLES
+    print "Power trace: %d data points." % TRACES
     plaintexts = []
     traces = []
     for i in range(SAMPLES):
@@ -143,6 +149,7 @@ def attack() :
         R = attackByte(i, samples)
         max_tr = R[0].max()
         keyByte = 0
+        # Find the value in (0, 255) that has the highest correlation coefficient.
         for k in range(1,KEYS):
             temp = R[k].max()
             if temp > max_tr :
@@ -150,26 +157,49 @@ def attack() :
                 keyByte = k
         newByte = ("%X" % keyByte).zfill(2)
         key += newByte
+        print "Byte %d:\t%s" % (i, newByte)
 
-    testKey(key)
+    # Check if the recovered key is valid.
+    if testKey(key) == 1:
+        print "Key :"+key
+        print int(key, 16)
+        return 1
+    return 0
 
-    print "Key :"+key
-    print int(key, 16)
+# Test if recovered key is valid
+def getHexList(x) :
+    l = []
+    for i in range(BYTES) :
+        byte_i = getByte(x, i)
+        l.append(byte_i)
+    return l
+
+def getHexString(x) :
+    string = ""
+    for i in x:
+        string += ("%X" % i).zfill(2)
+    return string
 
 def testKey(key):
-    key = key.decode("hex")
+    key = getHexList(key)
+    key = pack(16*"B", *key)
+
     enc = AES.new(key)
 
     p = "%X" % random.getrandbits(BITSIZE)
+    plain = getHexList(p)
+    plain = pack(16*"B", *plain)
 
-    _, cipher = interactD(p)
+    _, cipher_1 = interactD(p)
 
-    print cipher
+    c = enc.encrypt(plain)
+    c = unpack(16*"B", c)
+    c = getHexString(c)
+    cipher_2 = int(c, 16)
 
-    c = enc.encrypt(p)
-    ciphertext = c.encode("hex")
-
-    print ciphertext
+    if cipher_1 == cipher_2:
+        return 1
+    return 0
 
 if ( __name__ == "__main__" ) :
     # Produce a sub-process representing the attack target.
@@ -182,4 +212,10 @@ if ( __name__ == "__main__" ) :
     target_in  = target.stdin
 
     # Execute a function representing the attacker.
-    attack()
+    while True:
+        if attack() == 1:
+            break
+        else :
+            print "Restart attack ..."
+            SAMPLES += 50
+            TRACES += 500
