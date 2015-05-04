@@ -1,6 +1,5 @@
 import sys, subprocess
 import random
-import multiprocessing
 from Crypto.Cipher import AES
 import numpy
 from struct import pack, unpack
@@ -97,6 +96,7 @@ Rcon = [0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36,
 
 # Paper starts from 1 ??
 def getByte(ByteString, index) :
+    ByteString.zfill(32)
     byte = ByteString[(index-1)*2 : index*2]
     return int(byte, 16)
 
@@ -130,15 +130,14 @@ def mul(a, b) :
         b >>= 1
     return p % 256
 
-
-
 def interact( fault, message ) :
-  # Send fault and message to attack target.
-  target_in.write( "%s\n" % ( fault ) ) ; target_in.flush()
-  target_in.write( "%s\n" % ( message ) ) ; target_in.flush()
+    # Send fault and message to attack target.
+    target_in.write( "%s\n" % ( fault ) ) ; target_in.flush()
+    target_in.write( "%s\n" % ( message ) ) ; target_in.flush()
 
-  # Receive ciphertext from attack target.
-  return int(target_out.readline().strip(), 16)
+    # Receive ciphertext from attack target.
+    ciphertext = target_out.readline().strip()
+    return int(ciphertext, 16)
 
 # Return the fault specification as a 5-element tuple
 def getFault() :
@@ -160,7 +159,8 @@ def getFault() :
 ################################################################################
 
 def eq(xi, xpi, ki) :
-    return add(RSubBytes(add(xi, ki)), RSubBytes(add(xpi, ki)))
+    result = add(RSubBytes(add(xi, ki)), RSubBytes(add(xpi, ki)))
+    return result
 
 # Solve first set of equations
 # k1, k8, k11, k14
@@ -459,7 +459,6 @@ def getByteList(x) :
     # starts from 1
     return (0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16)
 
-# Version 2.0
 def solve_a(N,a,b,c,d,e, h10) :
     r1 = add(a, b)
     r2 = RSubBytes(r1)
@@ -616,9 +615,7 @@ def inv_key(ik) :
     for i in range(10, 0, -1) :
         ik = inv_key_round(ik, i)
 
-    (ik0, ik1, ik2, ik3, ik4, ik5, ik6, ik7, ik8, ik9, ik10, ik11, ik12, ik13, ik14, ik15, ik16) = ik
-
-    return (ik1, ik2, ik3, ik4, ik5, ik6, ik7, ik8, ik9, ik10, ik11, ik12, ik13, ik14, ik15, ik16)
+    return ik[1:]
 
 def getString(x) :
     out = ""
@@ -626,56 +623,75 @@ def getString(x) :
         out += "%X" % i
     return out
 
-# http://eli.thegreenplace.net/2010/06/25/aes-encryption-of-files-in-python-with-pycrypto
-def test_key(k_10th) :
+def testKey(k_10th):
     # invert key
-    key_tpl = inv_key(k_10th)
+    k = inv_key(k_10th)
+    key = pack(16*"B", *k)
 
-    key_str = pack( 16 * "B", *key_tpl )
+    enc = AES.new(key)
 
-    enc = AES.new(key_str)
+    p = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
+    plain = getByteList(p)[1:]
+    plain = pack(16*"B", *plain)
 
-    plaintext = (str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]).zfill(32)
-    (p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16) = getByteList(plaintext)
-    p = (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16)
+    cipher_1 = interact('',p)
 
-    p_str = pack( 16 * "B", *p )
+    c = enc.encrypt(plain)
+    c = unpack(16*"B", c)
+    c = getString(c)
+    cipher_2 = int(c, 16)
 
-    # Encrypt
-    cipher = enc.encrypt(p_str)
-    cipher_a = unpack( 16 * "B", cipher )
-    ciphertext_a = getString(cipher_a)
+    if cipher_1 == cipher_2:
+        return getString(k)
+    return -1
 
-    # Encrypt
-    ciphertext_b = "%X" % interact('', plaintext)
+def attack_faster(x, xp, xs) :
+    print "Start attack with two faulty ciphertexts."
+    # k1, k8, k11, k14
+    set1a = equation1(x, xp)
+    set1b = equation1(x, xs)
+    for n in set1a :
+        if n in set1b :
+            break
+    (k1, k8, k11, k14) = n
 
-    c_a = int(ciphertext_a, 16)
-    c_b = int(ciphertext_b, 16)
+    # k2, k5, k12, k15
+    set2a = equation2(x, xp)
+    set2b = equation2(x, xs)
+    for n in set2a :
+        if n in set2b :
+            break
+    (k2, k5, k12, k15) = n
 
-    if ciphertext_a == ciphertext_b or c_a == c_b :
-        print "Key Found"
-        return key
-    else :
-        return -1
+    # k3, k6, k9, k16
+    set3a = equation3(x, xp)
+    set3b = equation3(x, xs)
+    for n in set3a :
+        if n in set3b :
+            break
+    (k3, k6, k9, k16) = n
 
+    # k4, k7, k10, k13
+    set4a = equation4(x, xp)
+    set4b = equation4(x, xs)
+    for n in set4a :
+        if n in set4b :
+            break
+    (k4, k7, k10, k13) = n
 
-def attack(pool) :
-    # Generate plaintext
-    plaintext = str(hex(random.getrandbits(BLOCK_SIZE)))[2:-1]
+    key = (0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16)
+    k = testKey(key)
+    if k != -1 :
+        print "Key: " + k
+        return 1
+    return 0
 
-    # Get fault
-    fault = getFault()
-
-    # Get faulty ciphertext
-    xp = "%X" % interact(fault, plaintext)
-    # Get correct ciphertext
-    x = "%X" % interact('', plaintext)
-
+def attack(x, xp) :
+    print "Start attack with one faulty ciphertext."
     print "Step 1 :"
     # k1, k8, k11, k14
     print "Set 1 ..."
     set1 = equation1(x, xp)
-
     print "Keys: " + str(len(set1))
     # k2, k5, k12, k15
     print "Set 2 ..."
@@ -690,9 +706,8 @@ def attack(pool) :
     set4 = equation4(x, xp)
     print "Keys: " + str(len(set4))
 
+    print "Step 2 :"
     length = len(set4) * len(set3)
-
-    inputs = [None] * length
 
     x  = getByteList(x)
     xp = getByteList(xp)
@@ -700,41 +715,26 @@ def attack(pool) :
     total = len(set1) * len(set2) * len(set3) * len(set4)
     i = 0
 
-    kcount = 0
-
-    print "Step 2 :"
-    for a in xrange(len(set1)):
-        sys.stdout.write("\rDoing thing %.2f, keys found: %d" %((i/(total*1.0))*100, kcount))
-        sys.stdout.flush()
-
-        (k1, k8, k11, k14) = set1[a]
-        for b in xrange(len(set2)) :
-            (k2, k5, k12, k15) = set2[b]
-
-            ii = 0
-
-            for c in xrange(len(set3)) :
-                (k3, k6, k9, k16) = set3[c]
-                for d in xrange(len(set4)) :
-                    (k4, k7, k10, k13) = set4[d]
-
-                    inputs[ii] = ((0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16), x, xp)
-
-                    ii=ii+1
-
+    for (k1, k8, k11, k14) in set1:
+        for (k2, k5, k12, k15) in set2 :
+            for (k3, k6, k9, k16) in set3 :
+                for (k4, k7, k10, k13) in set4 :
+                    key = step2_all(((0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16), x, xp))
                     i+=1
-                    # sys.stdout.write("\rDoing thing %d/%d, keys found: %d" %(i,total, kcount))
-                    # sys.stdout.flush()
+                    if key != -1 :
+                        print "Testing key: " + getString(key[1:])
+                        k = testKey(key)
+                        if k != -1 :
+                            print "Key: " + k
+                            return 1
 
-            keys = pool.map( step2_all, inputs )
-            for sk in keys :
-                if sk != -1 :
-                    print "Testing key ..."
-                    kcount += 1
-                    pk = test_key(sk)
-                    if pk != -1 :
-                        print pk
-                        return 1
+            sys.stdout.write("\rDoing thing %.2f" %((i/(total*1.0))*100))
+            sys.stdout.flush()
+    return 0
+
+################################################################################
+## Multiplication Table                                                       ##
+################################################################################
 
 mulTab = numpy.zeros((7, RANGE), dtype=int)
 
@@ -764,6 +764,31 @@ def getMul(a, b) :
     global mulTab
     return mulTab[a][b]
 
+################################################################################
+
+def recover_key() :
+    # Get fault
+    fault = getFault()
+
+    xp, xs, x = 0, 0, 0
+
+    while True :
+        # Generate plaintext
+        plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
+        # Get faulty ciphertext
+        xp = "%X" % interact(fault, plaintext)
+        # Get second faulty ciphertext
+        xs = "%X" % interact(fault, plaintext)
+        # Get correct ciphertext
+        x = "%X" % interact('', plaintext)
+
+        result = attack_faster(x, xp, xs)
+        if result == 1:
+            break
+
+    result = attack(x, xp)
+
+
 if ( __name__ == "__main__" ) :
     # Produce a sub-process representing the attack target.
     target = subprocess.Popen( args   = sys.argv[ 1 ],
@@ -774,11 +799,6 @@ if ( __name__ == "__main__" ) :
     target_out = target.stdout
     target_in  = target.stdin
 
-    pool = multiprocessing.Pool(multiprocessing.cpu_count())
-
     # Execute a function representing the attacker.
-    # while 1 :
-    #     if attack(pool) == 1 :
-    #         break
-
-    attack(pool)
+    recover_key()
+    # attack()

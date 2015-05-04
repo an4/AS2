@@ -97,7 +97,7 @@ the style or efficiency of a solution.
               - solution quality wrt. efficiency, robustness etc.    ( 40%)
               - analysis questions                                   ( 20%)
 
-              target material : [...]
+              target material : 93DED32B7BC65361AF837E57A7E94
 
 [?] Stage 4 : an attack based on power consumption
 
