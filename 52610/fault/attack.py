@@ -3,6 +3,7 @@ import random
 from Crypto.Cipher import AES
 import numpy
 from struct import pack, unpack
+import multiprocessing
 
 BLOCK_SIZE = 128
 RANGE = 256
@@ -460,37 +461,42 @@ def getByteList(x) :
     return (0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16)
 
 def solve_a(N,a,b,c,d,e, h10) :
-    r1 = add(a, b)
-    r2 = RSubBytes(r1)
+    # r1 = add(a, b)
+    # r2 = RSubBytes(r1)
+    #
+    # r3 = add(d, e)
+    # r4 = SubBytes(r3)
+    # r5 = add(c, r4)
+    # r6 = add(r5, h10)
+    #
+    # r7 = add(r2, r6)
+    # return getMul(N , r7)
 
-    r3 = add(d, e)
-    r4 = SubBytes(r3)
-    r5 = add(c, r4)
-    r6 = add(r5, h10)
-
-    r7 = add(r2, r6)
-
-    return getMul(N , r7)
+    return mulTab[N][rsbox[a ^ b] ^ c ^ sbox[d ^ e] ^ h10]
 
 def solve_b(N,a,b,c,d,e) :
-    r1 = add(a, b)
-    r2 = RSubBytes(r1)
+    # r1 = add(a, b)
+    # r2 = RSubBytes(r1)
+    #
+    # r3 = add(d, e)
+    # r4 = SubBytes(r3)
+    # r5 = add(c, r4)
+    #
+    # r6 = add(r2, r5)
+    # return getMul(N, r6)
 
-    r3 = add(d, e)
-    r4 = SubBytes(r3)
-    r5 = add(c, r4)
-
-    r6 = add(r2, r5)
-    return getMul(N, r6)
+    return mulTab[N][rsbox[a ^ b] ^ c ^ sbox[d ^ e]]
 
 def solve_c(N, a,b, c, d) :
-    r1 = add(a, b)
-    r2 = RSubBytes(r1)
+    # r1 = add(a, b)
+    # r2 = RSubBytes(r1)
+    #
+    # r3 = add(c, d)
+    #
+    # r4 = add(r2, r3)
+    # return getMul(N, r4)
 
-    r3 = add(c, d)
-
-    r4 = add(r2, r3)
-    return getMul(N, r4)
+    return mulTab[N][rsbox[a ^ b] ^ c ^ d]
 
 def step2_eq1(k, x, xp) :
     h10 = Rcon[10]
@@ -558,30 +564,37 @@ def step2_all(k_x_xp) :
     (k, x, xp) = k_x_xp
 
     # 2*f
-    a = step2_eq1(k, x, xp)
+    # a = step2_eq1(k, x, xp)
+    a = rsbox[mulTab[6][rsbox[x[1] ^ k[1]] ^ k[1] ^ sbox[k[14] ^ k[10]] ^ Rcon[10]] ^ mulTab[4][rsbox[x[14] ^ k[14]] ^ k[2] ^ sbox[k[15] ^ k[11]]] ^ mulTab[5][rsbox[x[11] ^ k[11]] ^ k[3] ^ sbox[k[16] ^ k[12]]] ^ mulTab[3][rsbox[x[8] ^ k[8]] ^ k[4] ^ sbox[k[13] ^ k[9]]]] ^ rsbox[mulTab[6][rsbox[xp[1] ^ k[1]] ^ k[1] ^ sbox[k[14] ^ k[10]] ^ Rcon[10]] ^ mulTab[4][rsbox[xp[14] ^ k[14]] ^ k[2] ^ sbox[k[15] ^ k[11]]] ^ mulTab[5][rsbox[xp[11] ^ k[11]] ^ k[3] ^ sbox[k[16] ^ k[12]]] ^ mulTab[3][rsbox[xp[8] ^ k[8]] ^ k[4] ^ sbox[k[13] ^ k[9]]]]
     # f
-    b = step2_eq2(k, x, xp)
+    # b = step2_eq2(k, x, xp)
+    b = rsbox[mulTab[3][rsbox[x[13] ^ k[13]] ^ k[13] ^ k[9]] ^ mulTab[6][rsbox[x[10] ^ k[10]] ^ k[10] ^ k[14]] ^ mulTab[4][rsbox[x[7] ^ k[7]] ^ k[15] ^ k[11]] ^ mulTab[5][rsbox[x[4] ^ k[4]] ^ k[16] ^ k[12]]] ^ rsbox[mulTab[3][rsbox[xp[13] ^ k[13]] ^ k[13] ^ k[9]] ^ mulTab[6][rsbox[xp[10] ^ k[10]] ^ k[10] ^ k[14]] ^ mulTab[4][rsbox[xp[7] ^ k[7]] ^ k[15] ^ k[11]] ^ mulTab[5][rsbox[xp[4] ^ k[4]] ^ k[16] ^ k[12]]]
 
     # check 2*f == f
-    if a != getMul(TWO, b) :
+    # if a != getMul(TWO, b) :
+    if a != mulTab[0][b] :
         return -1
 
     # f
-    c = step2_eq3(k, x, xp)
+    # c = step2_eq3(k, x, xp)
+    c = rsbox[mulTab[5][rsbox[x[9] ^ k[9]] ^ k[9] ^ k[5]] ^ mulTab[3][rsbox[x[6] ^ k[6]] ^ k[10] ^ k[6]] ^ mulTab[6][rsbox[x[3] ^ k[3]] ^ k[11] ^ k[7]] ^ mulTab[4][rsbox[x[16] ^ k[16]] ^ k[12] ^ k[8]]] ^ rsbox[mulTab[5][rsbox[xp[9] ^ k[9]] ^ k[9] ^ k[5]] ^ mulTab[3][rsbox[xp[6] ^ k[6]] ^ k[10] ^ k[6]] ^ mulTab[6][rsbox[xp[3] ^ k[3]] ^ k[11] ^ k[7]] ^ mulTab[4][rsbox[xp[16] ^ k[16]] ^ k[12] ^ k[8]]]
 
     # check f == f
     if b != c :
         return -1
 
     # 3*f
-    d = step2_eq4(k, x, xp)
+    # d = step2_eq4(k, x, xp)
+    d = rsbox[mulTab[4][rsbox[x[5] ^ k[5]] ^ k[5] ^ k[1]] ^ mulTab[5][rsbox[x[2] ^ k[2]] ^ k[6] ^ k[2]] ^ mulTab[3][rsbox[x[15] ^ k[15]] ^ k[7] ^ k[3]] ^ mulTab[6][rsbox[x[12] ^ k[12]] ^ k[8] ^ k[4]]] ^ rsbox[mulTab[4][rsbox[xp[5] ^ k[5]] ^ k[5] ^ k[1]] ^ mulTab[5][rsbox[xp[2] ^ k[2]] ^ k[6] ^ k[2]] ^ mulTab[3][rsbox[xp[15] ^ k[15]] ^ k[7] ^ k[3]] ^ mulTab[6][rsbox[xp[12] ^ k[12]] ^ k[8] ^ k[4]]]
 
     # check f == 3*f
-    if getMul(THREE, c) != d :
+    # if getMul(THREE, c) != d :
+    if mulTab[1][c] != d :
         return -1
 
     # check 2*f == f == f == 3*f
-    if getMul(THREE, a) == getMul(SIX, b) == getMul(SIX, c) == getMul(TWO, d) :
+    # if getMul(THREE, a) == getMul(SIX, b) == getMul(SIX, c) == getMul(TWO, d) :
+    if mulTab[1][a] == mulTab[2][b] == mulTab[2][c] == mulTab[0][d] :
         return k
     else :
         return -1
@@ -645,6 +658,19 @@ def testKey(k_10th):
         return getString(k)
     return -1
 
+# Test key without Crypto.Cipher, only available on Snowy.
+def testKey_2(k_10th) :
+    # invert key
+    k = inv_key(k_10th)
+    key = getString(k)
+
+    recovered_key = "93DED32B7BC65361AF837E57A7E94"
+
+    if key == recovered_key :
+        return key
+    else :
+        return -1
+
 def attack_faster(x, xp, xs) :
     print "Start attack with two faulty ciphertexts."
     # k1, k8, k11, k14
@@ -681,12 +707,13 @@ def attack_faster(x, xp, xs) :
 
     key = (0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16)
     k = testKey(key)
+    # k = testKey_2(key)
     if k != -1 :
         print "Key: " + k
         return 1
     return 0
 
-def attack(x, xp) :
+def attack(x, xp, pool) :
     print "Start attack with one faulty ciphertext."
     print "Step 1 :"
     # k1, k8, k11, k14
@@ -715,21 +742,38 @@ def attack(x, xp) :
     total = len(set1) * len(set2) * len(set3) * len(set4)
     i = 0
 
+    length = len(set3) * len(set4)
+    inputs = [None] * length
+    ii = 0
+
     for (k1, k8, k11, k14) in set1:
         for (k2, k5, k12, k15) in set2 :
+            ii = 0
             for (k3, k6, k9, k16) in set3 :
                 for (k4, k7, k10, k13) in set4 :
-                    key = step2_all(((0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16), x, xp))
+                    # key = step2_all(((0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16), x, xp))
                     i+=1
-                    if key != -1 :
-                        print "Testing key: " + getString(key[1:])
-                        k = testKey(key)
-                        if k != -1 :
-                            print "Key: " + k
-                            return 1
+                    # if key != -1 :
+                    #     # print "Testing key: " + getString(key[1:])
+                    #     k = testKey(key)
+                    #     # k = testKey_2(key)
+                    #     if k != -1 :
+                    #         print "Key: " + k
+                    #         return 1
+                    inputs[ii] = (((0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16), x, xp))
+                    ii += 1
 
-            sys.stdout.write("\rDoing thing %.2f" %((i/(total*1.0))*100))
-            sys.stdout.flush()
+            for key in pool.map(step2_all, inputs) :
+                if key != -1 :
+                    k = testKey(key)
+                    # k = testKey_2(key)
+                    if k != -1 :
+                        print "Key: " + k
+                        return 1
+
+            # sys.stdout.write("\rDoing thing %.2f" %((i/(total*1.0))*100))
+            # sys.stdout.flush()
+
     return 0
 
 ################################################################################
@@ -766,7 +810,7 @@ def getMul(a, b) :
 
 ################################################################################
 
-def recover_key() :
+def recover_key(pool) :
     # Get fault
     fault = getFault()
 
@@ -783,10 +827,21 @@ def recover_key() :
         x = "%X" % interact('', plaintext)
 
         result = attack_faster(x, xp, xs)
-        if result == 1:
+        if result == 1 :
             break
 
-    result = attack(x, xp)
+    while True :
+        result = attack(x, xp, pool)
+
+        if result == 1 :
+            break
+
+        # Generate plaintext
+        plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
+        # Get faulty ciphertext
+        xp = "%X" % interact(fault, plaintext)
+        # Get correct ciphertext
+        x = "%X" % interact('', plaintext)
 
 
 if ( __name__ == "__main__" ) :
@@ -799,6 +854,7 @@ if ( __name__ == "__main__" ) :
     target_out = target.stdout
     target_in  = target.stdin
 
+    pool = multiprocessing.Pool(multiprocessing.cpu_count())
+
     # Execute a function representing the attacker.
-    recover_key()
-    # attack()
+    recover_key(pool)
