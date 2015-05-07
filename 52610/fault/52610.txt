@@ -31,3 +31,8 @@ Q.3 For side-channel attacks, the number of acquisitions required can be
     measures.
 
 Answer:
+    In the case of fault attacks the equivalent measure is the number of faults
+    required in order to recover they key. Introducing faults can be an expensive
+    operation. The less faults required, the more efficient the attack is.
+    Side channel attacks using this method are not efficient as they require a
+    large number of samples.
