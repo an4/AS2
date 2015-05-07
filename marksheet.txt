@@ -16,7 +16,11 @@
 So that we can calibrate and improve the assignment in the future, give us
 a rough idea how long (in hours) you spent on it *in total*:
 
+Stage 1 + 2
 effort : 40 hours
+
+Stage 3 + 4
+effort : 45 hours
 
 -------------------------------------------------------------------------------
 
@@ -51,6 +55,11 @@ STAGE 2:
     http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.12.3070
 
 STAGE 3:
+    I used the framework provided during the lab session for interacting with the
+    target device.
+
+    Lecture slides for operations in F8.
+
     http://anh.cs.luc.edu/331/code/aes.py
     SubBytes Matrix
 
@@ -63,6 +72,11 @@ STAGE 4:
     http://anh.cs.luc.edu/331/code/aes.py
 
     Lecture slides
+
+    Questions:
+    http://users.wpi.edu/~martin/MQP/hnathpettengill.pdf
+    https://www.blackhat.com/presentations/bh-usa-07/De_Haas/Presentation/bh-usa-07-de_haas.pdf
+    
 
 -------------------------------------------------------------------------------
 
@@ -119,6 +133,12 @@ source code) should go here:
 
      I worked on Snowy.
 
-     Both attacks can be run with: python attack.py ./52610.R test.param
+     Both attacks can be run with: python attack.py ./52610.D
+
+     The fault attack and the power attack check if the library Crypto.Cipher is
+     available, if not they use the previously recovered keys to test if the new
+     key is valid. I run my attacks on Snowy and recovered the keys, then hard-coded
+     them in the test functions so I can test my attacks on machines that do not
+     have Crypto.Cipher.
 
 -------------------------------------------------------------------------------

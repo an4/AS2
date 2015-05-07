@@ -4,12 +4,16 @@ Q.1 As a security consultant, you have been working on a prototype of the
     attack.  Explain the options available, and which one you would
     recommend.
 
+Answer:
     Countermeasures:
-    - insertion of random NOP instructions
-    - shuffling: the sequence of the 16 S-box look-ups of the AES is changed
-    randomly
-    - masking
-    - fresh rekeying: the generation of a fresh session key precedes any encryption
+    - Blinding and masking : Break relation between processed value and power consumption.
+    - Leakage reduction : Balance processing of values.
+    - Noise introduction
+    - Protocol level countermeasures
+    - Incorporating randomness: Randomly insert instruction with no effect on the algorithm.
+    - Shuffling : The sequence of the 16 S-box lookups of the AES is changed randomly.
+
+    I would recommend Leakage reduction.
 
 Q.2 Your implementation of this attack will target some operation during
     execution of AES.  Identify which operation you target, and explain
@@ -24,7 +28,26 @@ Q.4 DPA attacks rely on a leakage model; for an Intel 8051, one might
     and justify the choice of model you used (e.g., explain why/how the
     attack target might leak information in this way).
 
+Answer:
+    The Hamming Weight Power Model relies on the basic premise that an operation
+    will consume an amount of power that is proportional to the number of bits
+    switched to one in the processing data. The model can be used when the attacker
+    has little knowledge about the target. Differential Power Analysis Attacks using
+    the Hamming Weight model are not as efficient as the attacks using the Hamming
+    Distance model. However, the HW model requires less knowledge about the target.
 
-    
+    The Hamming Distance Power Model relies on the premise that an operation will
+    consume an amount of power that is proportional to the number of transitions
+    0 -> 1 and 1 -> 0 made while performing the operation. It assumes that both
+    transitions consume an equal amount of power, this is not always the case. The
+    HD Power Model is preferred in cases where a change in data can be observed.
+
+    An attacker will use The Hamming Weight Power Model if he does not have access
+    to two consecutive states of the sensitive data.
+
+    I decided to use the Hamming Weight Power Model because I do not have access to any
+    of the intermediate values of the plaintext as it's being encrypted.
+
+
 Q.3 Suppose the attack target executes AES in CBC mode rather than ECB. How
     would you alter your attack strategy to cope with this change?

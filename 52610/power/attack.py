@@ -4,9 +4,14 @@ from numpy import matrix
 from numpy import uint8
 from numpy import float32
 from numpy import corrcoef
-from Crypto.Cipher import AES
 from struct import pack
 from struct import unpack
+try:
+    from Crypto.Cipher import AES
+    crypto_available = True
+except ImportError :
+    crypto_available = False
+
 
 OCTET_SIZE = 32
 BYTES = 16
@@ -160,7 +165,11 @@ def attack() :
         print "Byte %d:\t%s" % (i, newByte)
 
     # Check if the recovered key is valid.
-    if testKey(key) == 1:
+    if crypto_available :
+        result = testKey(key)
+    else :
+        result = testKey_2(key)
+    if result == 1:
         print "Key :"+key
         print int(key, 16)
         return 1
@@ -198,6 +207,12 @@ def testKey(key):
     cipher_2 = int(c, 16)
 
     if cipher_1 == cipher_2:
+        return 1
+    return 0
+
+def testKey_2(key):
+    recovered_key = "61A4C140DD7409B8066A36F92AEF097A"
+    if key == recovered_key :
         return 1
     return 0
 
