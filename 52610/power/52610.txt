@@ -61,4 +61,7 @@ Q.3 Suppose the attack target executes AES in CBC mode rather than ECB. How
     would you alter your attack strategy to cope with this change?
 
 Answer:
-    The new attack requires the recovery of both the key and the IV(initial vector).
+    I would use plaintexts < 16 bytes. In this case the only difference to ECB is that
+    the plaintext is xored with the IV before entering AES encryption. Because we do not
+    know the value of the IV we do not know the input to AES. I would attack the last round
+    instead of the first round, using the ciphertext and the final round table lookups. 
