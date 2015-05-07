@@ -162,7 +162,7 @@ def attack() :
                 keyByte = k
         newByte = ("%X" % keyByte).zfill(2)
         key += newByte
-        print "Byte %d:\t%s" % (i, newByte)
+        sys.stdout.write("Byte {0:<7}: {1:<51}\n".format(i, newByte))
 
     # Check if the recovered key is valid.
     if crypto_available :

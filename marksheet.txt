@@ -76,7 +76,7 @@ STAGE 4:
     Questions:
     http://users.wpi.edu/~martin/MQP/hnathpettengill.pdf
     https://www.blackhat.com/presentations/bh-usa-07/De_Haas/Presentation/bh-usa-07-de_haas.pdf
-    
+    http://www.uclouvain.be/crypto/wissec2009/static/5.pdf
 
 -------------------------------------------------------------------------------
 
@@ -131,14 +131,18 @@ Any other documentation, notes or comments that you think are important or
 might be easy to overlook (e.g., a subtle issue or technique in associated
 source code) should go here:
 
-     I worked on Snowy.
+    I worked on Snowy.
 
-     Both attacks can be run with: python attack.py ./52610.D
+    Running fault attack:
 
-     The fault attack and the power attack check if the library Crypto.Cipher is
-     available, if not they use the previously recovered keys to test if the new
-     key is valid. I run my attacks on Snowy and recovered the keys, then hard-coded
-     them in the test functions so I can test my attacks on machines that do not
-     have Crypto.Cipher.
+
+    Running power attack:
+    python attack.py ./52610.D
+
+    The fault attack and the power attack check if the library Crypto.Cipher is
+    available, if not they use the previously recovered keys to test if the new
+    key is valid. I run my attacks on Snowy and recovered the keys, then hard-coded
+    them in the test functions so I can test my attacks on machines that do not
+    have Crypto.Cipher.
 
 -------------------------------------------------------------------------------

@@ -20,8 +20,16 @@ Q.2 Your implementation of this attack will target some operation during
     why.  Outline other operation(s) you could have targeted, and why they
     might be a better or worse choice.
 
-    SubBytes
-    needs to be linear
+Answer:
+    Good targets for the Differential Power Analysis Attack are functions which
+    are highly non-linear as they facilitate distinguishability of the correct
+    key hypothesis.
+    Only the first and last rounds can be attacked. This is because the value of
+    the plaintext input or ciphertext output need to be known in order to retrieve
+    the key.
+    An attacker can easily exploit the SubBytes operation of the first or last
+    round of AES.
+    I used the SubBytes operation in the first round to recover the key.
 
 Q.4 DPA attacks rely on a leakage model; for an Intel 8051, one might
     consider Hamming weight or Hamming distance models for example. Explain
