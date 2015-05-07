@@ -780,8 +780,8 @@ def attack(x, xp, pool) :
                         print "\nKey: " + k
                         return 1
 
-            # sys.stdout.write("\rDoing thing %.2f" %((i/(total*1.0))*100))
-            # sys.stdout.flush()
+            sys.stdout.write("\rDoing thing %.2f" %((i/(total*1.0))*100))
+            sys.stdout.flush()
 
     return 0
 
@@ -819,38 +819,66 @@ def getMul(a, b) :
 
 ################################################################################
 
-def recover_key(pool) :
+def recover_key(pool, faults) :
     # Get fault
     fault = getFault()
 
     xp, xs, x = 0, 0, 0
 
-    while True :
-        # Generate plaintext
-        plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
-        # Get faulty ciphertext
-        xp = ("%X" % interact(fault, plaintext)).zfill(32)
-        # Get second faulty ciphertext
-        xs = ("%X" % interact(fault, plaintext)).zfill(32)
-        # Get correct ciphertext
-        x = ("%X" % interact('', plaintext)).zfill(32)
+    if faults == 0 :
+        print "Running both attacks."
+        while True :
+            # Generate plaintext
+            plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
+            # Get faulty ciphertext
+            xp = ("%X" % interact(fault, plaintext)).zfill(32)
+            # Get second faulty ciphertext
+            xs = ("%X" % interact(fault, plaintext)).zfill(32)
+            # Get correct ciphertext
+            x = ("%X" % interact('', plaintext)).zfill(32)
+            result = attack_faster(x, xp, xs)
+            if result == 1 :
+                break
+        while True :
+            # Generate plaintext
+            plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
+            # Get faulty ciphertext
+            xp = ("%X" % interact(fault, plaintext)).zfill(32)
+            # Get correct ciphertext
+            x = ("%X" % interact('', plaintext)).zfill(32)
 
-        result = attack_faster(x, xp, xs)
-        if result == 1 :
-            break
+            result = attack(x, xp, pool)
 
-    while True :
-        # Generate plaintext
-        plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
-        # Get faulty ciphertext
-        xp = ("%X" % interact(fault, plaintext)).zfill(32)
-        # Get correct ciphertext
-        x = ("%X" % interact('', plaintext)).zfill(32)
+            if result == 1 :
+                break
+    elif faults == 1 :
+        while True :
+            # Generate plaintext
+            plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
+            # Get faulty ciphertext
+            xp = ("%X" % interact(fault, plaintext)).zfill(32)
+            # Get correct ciphertext
+            x = ("%X" % interact('', plaintext)).zfill(32)
 
-        result = attack(x, xp, pool)
+            result = attack(x, xp, pool)
 
-        if result == 1 :
-            break
+            if result == 1 :
+                break
+    else :
+        while True :
+            # Generate plaintext
+            plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
+            # Get faulty ciphertext
+            xp = ("%X" % interact(fault, plaintext)).zfill(32)
+            # Get second faulty ciphertext
+            xs = ("%X" % interact(fault, plaintext)).zfill(32)
+            # Get correct ciphertext
+            x = ("%X" % interact('', plaintext)).zfill(32)
+
+            result = attack_faster(x, xp, xs)
+
+            if result == 1 :
+                break
 
 if ( __name__ == "__main__" ) :
     # Produce a sub-process representing the attack target.
@@ -862,7 +890,16 @@ if ( __name__ == "__main__" ) :
     target_out = target.stdout
     target_in  = target.stdin
 
+    if len(sys.argv) != 3 :
+        print "Not enough arguments."
+        sys.exit(0)
+
+    faults = int(sys.argv[2])
+    if faults == 2 and faults != 1 and faults != 0 :
+        print "3RROR"
+        sys.exit(0)
+
     pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
     # Execute a function representing the attacker.
-    recover_key(pool)
+    recover_key(pool, faults)

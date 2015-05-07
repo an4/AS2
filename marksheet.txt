@@ -133,8 +133,14 @@ source code) should go here:
 
     I worked on Snowy.
 
-    Running fault attack:
+    Running fault attack with one fault:
+    python attack.py ./52610.D 1
 
+    Running fault attack with two faults:
+    python attack.py ./52610.D 2
+
+    Running fault attack with both one and two faults, two attacks:
+    python attack.py ./52610.D 0
 
     Running power attack:
     python attack.py ./52610.D

@@ -59,3 +59,6 @@ Answer:
 
 Q.3 Suppose the attack target executes AES in CBC mode rather than ECB. How
     would you alter your attack strategy to cope with this change?
+
+Answer:
+    The new attack requires the recovery of both the key and the IV(initial vector).
