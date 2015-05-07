@@ -640,7 +640,7 @@ def inv_key(ik) :
 def getString(x) :
     out = ""
     for i in x :
-        out += ("%X" % i).zfill(2)
+        out += "%X" % i
     return out
 
 def testKey(k_10th):
@@ -825,19 +825,19 @@ def recover_key(pool) :
 
     xp, xs, x = 0, 0, 0
 
-    # while True :
-    #     # Generate plaintext
-    #     plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
-    #     # Get faulty ciphertext
-    #     xp = ("%X" % interact(fault, plaintext)).zfill(32)
-    #     # Get second faulty ciphertext
-    #     xs = ("%X" % interact(fault, plaintext)).zfill(32)
-    #     # Get correct ciphertext
-    #     x = ("%X" % interact('', plaintext)).zfill(32)
-    #
-    #     result = attack_faster(x, xp, xs)
-    #     if result == 1 :
-    #         break
+    while True :
+        # Generate plaintext
+        plaintext = ("%X" % random.getrandbits(BLOCK_SIZE)).zfill(32)
+        # Get faulty ciphertext
+        xp = ("%X" % interact(fault, plaintext)).zfill(32)
+        # Get second faulty ciphertext
+        xs = ("%X" % interact(fault, plaintext)).zfill(32)
+        # Get correct ciphertext
+        x = ("%X" % interact('', plaintext)).zfill(32)
+
+        result = attack_faster(x, xp, xs)
+        if result == 1 :
+            break
 
     while True :
         # Generate plaintext
