@@ -895,7 +895,7 @@ if ( __name__ == "__main__" ) :
         sys.exit(0)
 
     faults = int(sys.argv[2])
-    if faults == 2 and faults != 1 and faults != 0 :
+    if faults != 2 and faults != 1 and faults != 0 :
         print "3RROR"
         sys.exit(0)
 
